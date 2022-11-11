@@ -44,8 +44,9 @@ def get_args():
                         choices=['raw', 'shard'],
                         help='train and cv data type')
     parser.add_argument('--train_data_supervised', required=True, help='path for data.list for supervised data, '
-                                                                       'eg.data/train_set/data_aishell.list  ')
-    parser.add_argument('--train_data_wenetspeech', required=True, help='wenetSpeech train data file')
+                                                                       'eg. data/train_set/data_aishell.list  ')
+    parser.add_argument('--train_data_unsupervised', required=True, help='path for data.list for unsupervised '
+                                                                         'sudo-label, eg. data/train_set/data_wenet')
     parser.add_argument('--cv_data', required=True, help='cv data file')
     parser.add_argument('--gpu',
                         type=int,
@@ -155,7 +156,7 @@ def main():
     print("dataset num = ", dataset_num)
     print("fuse_batch = ", fuse_batch)
     print("supervised data list = ", args.train_data_supervised)
-    print("wenetspeech data list = ", args.train_data_wenetspeech)
+    print("wenetspeech data list = ", args.train_data_unsupervised)
 
 
     cv_conf = copy.deepcopy(train_conf_aishell)
@@ -167,7 +168,7 @@ def main():
     train_dataset_supervised = Dataset(args.data_type, args.train_data_supervised, symbol_table,
                             train_conf_aishell, args.bpe_model, partition=True)
 
-    train_dataset_wenetspeech = Dataset(args.data_type, args.train_data_wenetspeech, symbol_table,
+    train_dataset_unsupervised = Dataset(args.data_type, args.train_data_unsupervised, symbol_table,
                             train_conf_wenetspeech, args.bpe_model, partition=True)
 
 
@@ -179,13 +180,13 @@ def main():
                          args.bpe_model,
                          partition=False)
 
-    train_data_loader_aishell = DataLoader(train_dataset_supervised,
+    train_data_loader_supervised = DataLoader(train_dataset_supervised,
                                    batch_size=None,
                                    pin_memory=args.pin_memory,
                                    num_workers=args.num_workers,
                                    prefetch_factor=args.prefetch)
 
-    train_data_loader_wenetspeech = DataLoader(train_dataset_wenetspeech,
+    train_data_loader_unsupervised = DataLoader(train_dataset_unsupervised,
                                    batch_size=None,
                                    pin_memory=args.pin_memory,
                                    num_workers=args.num_workers,
@@ -225,7 +226,7 @@ def main():
         script_model.save(os.path.join(args.model_dir, 'init.zip'))
     executor = Executor()
     # If specify checkpoint, load some info from checkpoint
-    print("!!!!!!!!!!!!! check point is ", args.checkpoint)
+    print("check point is ", args.checkpoint)
     if args.checkpoint is not None:
 
         infos = load_checkpoint(model, args.checkpoint)
@@ -288,10 +289,9 @@ def main():
         lr = optimizer.param_groups[0]['lr']
         logging.info('Epoch {} TRAIN info lr {}'.format(epoch, lr))
         
-        executor.train(model, optimizer, scheduler, train_data_loader_aishell, train_data_loader_wenetspeech , device,
+        executor.train(model, optimizer, scheduler, train_data_loader_supervised, train_data_loader_unsupervised , device,
                        writer, configs, scaler, dataset_num, fuse_batch)
-        #executor.train(model, optimizer, scheduler, train_data_loader_aishell,  device,
-        #               writer, configs, scaler)
+
         total_loss, num_seen_utts = executor.cv(model, cv_data_loader, device,
                                                 configs)
         cv_loss = total_loss / num_seen_utts

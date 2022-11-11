@@ -41,6 +41,7 @@ text_file=""
 hypo_name=""
 dir=""
 pseudo_data_list=""
+supervised_data_list=""
 gcmvn=""
 checkpoint=
 average_num=30
@@ -55,9 +56,7 @@ num_nodes=1
 # You should set the node_rank=0 on the first machine, set the node_rank=1
 # on the second machine, and so on.
 node_rank=0
-# data
-data=/aishell1
-data_url=www.openslr.org/resources/33
+
 
 dict=data/dict/lang_char.txt
 
@@ -94,6 +93,7 @@ decode_modes="attention_rescoring"
 echo "setting for this run:"
 echo "dir is ${dir}"
 echo "pseudo data list is ${pseudo_data_list}"
+echo "supervised data list is ${supervised_data_list}"
 echo "data_list_dir is ${data_list_dir}"
 echo "job_num is ${job_num}"
 echo "wav_label_dir is ${wav_label_dir}"
@@ -104,9 +104,12 @@ echo "checkpoint is ${checkpoint} "
 
 
 # we assumed that you have finished the data pre-process steps from -1 to 3 in aishell1/s0/run.sh .
-# One can modify the "--train_data_supervised" to match your supervised data list.
-# Here i used wenetspeech as the unsupervised data, one can run the data pre-process steps from -1 to 3 in
-# wenetspeech/s0/run.sh ; One can modify "--train_data_supervised" to match your unsupervised data list.
+# You can modify the "--train_data_supervised" to match your supervised data list.
+# Here i used wenetspeech as the unsupervised data, you can run the data pre-process steps from -1 to 3 in
+# wenetspeech/s0/run.sh ; you can modify "--train_data_supervised" to match your unsupervised data list.
+# you can follow this process to generate your own dataset.
+# I have also included my code for extracting data in local/...
+
 # stage 1 is for training
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   mkdir -p $dir
@@ -141,21 +144,20 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
     rank=`expr $node_rank \* $num_gpus + $i`
 
-
-
     # "--train_data_supervised" is the path of datalist for supervised data, which refers to aishell-1 in the example.
     # "--train_data_unsupervised" is the path of datalist for unsupervised data, which refers to wenetSpeech here.
     # For supervised training, one could either set "--dataset_num" to 1 ,
     # or set the config pseudo-ratio to 0 so that none of the pseudo data is used.
     # For NST training, keep "--dataset_num" = 2.
     # fuse batch should be set to zero. We tested different ways of fusing two dataset,
-    # however the outcome is pretty much similar, so just leave it as 0.
-    python wenet/bin/train.py --gpu $gpu_id \
+    # however the outcome is pretty much similar and 0 is the fastest method.
+
+    python wenet/bin/train_nst.py --gpu $gpu_id \
       --config $train_config \
       --data_type $data_type \
       --symbol_table $dict \
-      --train_data_supervised data/$train_set/data_aishell.list \
-      --train_data_wenetspeech data/$train_set/$pseudo_data_list \
+      --train_data_supervised data/$train_set/$supervised_data_list \
+      --train_data_unsupervised data/$train_set/$pseudo_data_list \
       --cv_data data/dev/data.list \
       ${checkpoint:+--checkpoint $checkpoint} \
       --model_dir $dir \
@@ -173,7 +175,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   wait
 fi
 
-#
+# In stage 2, we get the averaged final checkpoint and calculate the test and dev accuracy
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   # Test model, please specify the model you want to test by --checkpoint
   # stage 5 we test with aishell dataset,
