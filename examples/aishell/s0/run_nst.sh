@@ -16,7 +16,7 @@
 # limitations under the License.
 
 
-# This is an augmented version of aishell-1 "run.sh" to make the code compatible with noisy student training
+# Augmented version of original run.sh to make the code compatible with noisy student training
 
 . ./path.sh || exit 1;
 
@@ -45,9 +45,10 @@ gcmvn=""
 checkpoint=
 average_num=30
 nj=16
-
+#exp/conformer_wenet1k_nst0_sr3_v2/avg_30.pt
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
+#global_cmvn_ai12
 
 num_nodes=1
 
@@ -68,8 +69,16 @@ data_type=shard
 num_utts_per_shard=1000
 
 train_set=train
+# Optional train_config
+# 1. conf/train_transformer.yaml: Standard transformer
+# 2. conf/train_conformer.yaml: Standard conformer
+# 3. conf/train_unified_conformer.yaml: Unified dynamic chunk causal conformer
+# 4. conf/train_unified_transformer.yaml: Unified dynamic chunk transformer
+# 5. conf/train_u2++_conformer.yaml: U2++ conformer
+# 6. conf/train_u2++_transformer.yaml: U2++ transformer
 
-train_config=conf/train_conformer_nst.yaml
+
+train_config=conf/train_conformer_yuch_ratio2.yaml
 
 cmvn=true
 #dir=exp/conformer_wenet1k_nst5_LM_diff_leq_10
@@ -91,7 +100,8 @@ decode_modes="attention_rescoring"
 . tools/parse_options.sh || exit 1;
 
 # print the settings
-echo "setting for this run:"
+echo "batch = 32"
+echo "setting for this run"
 echo "dir is ${dir}"
 echo "pseudo data list is ${pseudo_data_list}"
 echo "data_list_dir is ${data_list_dir}"
@@ -102,13 +112,65 @@ echo "text_file is ${text_file}"
 echo "average_num is ${average_num}"
 echo "checkpoint is ${checkpoint} "
 
+if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
+  echo "stage -1: Data Download"
+  local/download_and_untar.sh ${data} ${data_url} data_aishell
+  local/download_and_untar.sh ${data} ${data_url} resource_aishell
+fi
 
-# we assumed that you have finished the data pre-process steps from -1 to 3 in aishell1/s0/run.sh .
-# One can modify the "--train_data_supervised" to match your supervised data list.
-# Here i used wenetspeech as the unsupervised data, one can run the data pre-process steps from -1 to 3 in
-# wenetspeech/s0/run.sh ; One can modify "--train_data_supervised" to match your unsupervised data list.
-# stage 1 is for training
+if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
+  # Data preparation
+  local/aishell_data_prep.sh ${data}/data_aishell/wav \
+    ${data}/data_aishell/transcript
+fi
+
+
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+  # remove the space between the text labels for Mandarin dataset
+  for x in train dev test; do
+    cp data/${x}/text data/${x}/text.org
+    paste -d " " <(cut -f 1 -d" " data/${x}/text.org) \
+      <(cut -f 2- -d" " data/${x}/text.org | tr -d " ") \
+      > data/${x}/text
+    rm data/${x}/text.org
+  done
+
+  # one should calculate global_cmvn for whatever dataset they use (combining supervised and unsupervisde).
+  # replace the name for --in_scp and --out_cmvb recording to your dataset.
+  tools/compute_cmvn_stats.py --num_workers 16 --train_config $train_config \
+    --in_scp data/${train_set}/ai12_wav.scp \
+    --out_cmvn data/$train_set/global_cmvn_ai12
+fi
+
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+  echo "Make a dictionary"
+  mkdir -p $(dirname $dict)
+  echo "<blank> 0" > ${dict}  # 0 is for "blank" in CTC
+  echo "<unk> 1"  >> ${dict}  # <unk> must be 1
+  tools/text2token.py -s 1 -n 1 data/train/text | cut -f 2- -d" " \
+    | tr " " "\n" | sort | uniq | grep -a -v -e '^\s*$' | \
+    awk '{print $0 " " NR+1}' >> ${dict}
+  num_token=$(cat $dict | wc -l)
+  echo "<sos/eos> $num_token" >> $dict
+fi
+
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+  echo "Prepare data, prepare requried format"
+  for x in dev test ${train_set}; do
+    if [ $data_type == "shard" ]; then
+      tools/make_shard_list.py --num_utts_per_shard $num_utts_per_shard \F
+        --num_threads 16 data/$x/wav.scp data/$x/text \
+        $(realpath data/$x/shards) data/$x/data.list
+    else
+      tools/make_raw_list.py data/$x/wav.scp data/$x/text \
+        data/$x/data.list
+    fi
+  done
+fi
+
+# This stage is modified for NST
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   mkdir -p $dir
   # You have to rm `INIT_FILE` manually when you resume or restart a
   # multi-machine training.
@@ -121,9 +183,6 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   dist_backend="gloo"
   world_size=`expr $num_gpus \* $num_nodes`
   echo "total gpus is: $world_size"
-
-  # the global_cmvn file need to be calculated by combining both supervised/unsupervised datasets,
-  # and it should be positioned at data/${train_set}/global_cmvn .
   cmvn_opts=
   $cmvn && cp data/${train_set}/global_cmvn $dir/global_cmvn
   $cmvn && cmvn_opts="--cmvn ${dir}/global_cmvn"
@@ -138,18 +197,13 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "gpu number  $i "
     # Rank of each gpu/process used for knowing whether it is
     # the master of a worker.
-
+    #pseudo_data_6_5_nst_2_hypo_leq10.list
     rank=`expr $node_rank \* $num_gpus + $i`
 
-
-
-    # "--train_data_supervised" is the path of datalist for supervised data, which refers to aishell-1 in the example.
-    # "--train_data_unsupervised" is the path of datalist for unsupervised data, which refers to wenetSpeech here.
-    # For supervised training, one could either set "--dataset_num" to 1 ,
-    # or set the config pseudo-ratio to 0 so that none of the pseudo data is used.
-    # For NST training, keep "--dataset_num" = 2.
-    # fuse batch should be set to zero. We tested different ways of fusing two dataset,
-    # however the outcome is pretty much similar, so just leave it as 0.
+    # we added several new arugment for train.py
+    # "--train_data_supervised" is the path of datalist for supervised data, which refers to
+    # aishell-1 in the paper. One can modify it manually or feed
+    #
     python wenet/bin/train.py --gpu $gpu_id \
       --config $train_config \
       --data_type $data_type \
@@ -173,8 +227,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   wait
 fi
 
-#
-if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   # Test model, please specify the model you want to test by --checkpoint
   # stage 5 we test with aishell dataset,
   if [ ${average_checkpoint} == true ]; then
