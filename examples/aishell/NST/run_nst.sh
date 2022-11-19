@@ -179,6 +179,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 fi
 
 # In stage 2, we get the averaged final checkpoint and calculate the test and dev accuracy
+# please make sure your test and valid data.list are in the proper location.
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   # Test model, please specify the model you want to test by --checkpoint
   # stage 5 we test with aishell dataset,
@@ -255,7 +256,7 @@ fi
 
 
 
-# split the datalist into N sublists, where N depends on the number of available cpu in your cluster.
+# split the (unsupervised) datalist into N sublists, where N depends on the number of available cpu in your cluster.
 # when making inference, we compute N sublist in parallel.
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
@@ -266,6 +267,9 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     --output_dir data/train/$dir_split
 
 fi
+
+
+
 
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then

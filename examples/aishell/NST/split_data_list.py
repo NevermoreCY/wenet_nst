@@ -9,7 +9,7 @@ def get_args():
     parser.add_argument('--job_nums',type=int, default=8, help='number of total split jobs')
     parser.add_argument('--data_list_path',required=True, help='the path to the data.list file')
     parser.add_argument('--output_dir', required=True,  help='path to output dir, '
-                                                             'eg --output_dir=data/train/aishell_split_60/')
+                                                             'eg --output_dir=data/train/aishell_split_60')
     args = parser.parse_args()
     return args
 
@@ -36,7 +36,7 @@ def main():
     # generate N sublist
     for i in range(num_lists):
         print("current dir num", i )
-        out_put_sub_dir = output_dir + "data_wenet" + str(i) + "/"
+        out_put_sub_dir = output_dir + "/" + "data_sublist" + str(i) + "/"
         os.makedirs(out_put_sub_dir, exist_ok=True)
         output_list = out_put_sub_dir +"data_list"
 
