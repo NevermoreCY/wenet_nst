@@ -32,7 +32,7 @@ export NCCL_DEBUG=INFO
 stage=0 # start from 0 if you need to start from data preparation
 stop_stage=5
 
-# here are extra parameters for NST
+# here are extra parameters used in NST
 data_list_dir=""
 job_num=-1
 wav_label_dir=""
@@ -47,6 +47,9 @@ enable_nst=1
 checkpoint=
 average_num=30
 nj=16
+num_split=""
+data_list=""
+dir_split=""
 
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
@@ -199,7 +202,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   for mode in ${decode_modes}; do
   {
     #test_dir=$dir/test_${mode}_${target_pt}pt  # for target pt
-    test_dir=$dir/test_${mode}_ep240_${average_num}pt   # for average pt
+    test_dir=$dir/test_${mode}${average_num}pt   # for average pt
     mkdir -p $test_dir
     python wenet/bin/recognize.py --gpu 0 \
       --mode $mode \
@@ -221,36 +224,51 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   } &
   done
 
-  # dev_wer
-#  for mode in ${decode_modes}; do
-#  {
-#    #test_dir=$dir/test_${mode}_${target_pt}pt  # for target pt
-#    dev_dir=$dir/dev_${mode}_ep240_${average_num}pt   # for average pt
-#    mkdir -p $dev_dir
-#    python wenet/bin/recognize.py --gpu 0 \
-#      --mode $mode \
-#      --config $dir/train.yaml \
-#      --data_type $data_type \
-#      --test_data data/dev/data.list \
-#      --checkpoint $decode_checkpoint \
-#      --beam_size 10 \
-#      --batch_size 1 \
-#      --penalty 0.0 \
-#      --dict $dict \
-#      --ctc_weight $ctc_weight \
-#      --reverse_weight $reverse_weight \
-#      --result_file $dev_dir/text \
-#      ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
-#    echo "before compute-wer"
-#    python tools/compute-wer.py --char=1 --v=1 \
-#      data/dev/text $dev_dir/text > $dev_dir/wer
-#  } &
-#  done
+#   dev_wer
+  for mode in ${decode_modes}; do
+  {
+    #test_dir=$dir/test_${mode}_${target_pt}pt  # for target pt
+    dev_dir=$dir/dev_${mode}${average_num}pt   # for average pt
+    mkdir -p $dev_dir
+    python wenet/bin/recognize.py --gpu 0 \
+      --mode $mode \
+      --config $dir/train.yaml \
+      --data_type $data_type \
+      --test_data data/dev/data.list \
+      --checkpoint $decode_checkpoint \
+      --beam_size 10 \
+      --batch_size 1 \
+      --penalty 0.0 \
+      --dict $dict \
+      --ctc_weight $ctc_weight \
+      --reverse_weight $reverse_weight \
+      --result_file $dev_dir/text \
+      ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
+    echo "before compute-wer"
+    python tools/compute-wer.py --char=1 --v=1 \
+      data/dev/text $dev_dir/text > $dev_dir/wer
+  } &
+  done
   wait
 fi
 
 
-if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
+
+
+# split the datalist into N sublists, where N depends on the number of available cpu in your cluster.
+# when making inference, we compute N sublist in parallel.
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+  # Export the best model you want
+  python split_data_list.py \
+    --job_nums $num_split \
+    --data_list_path data/train/$data_list \
+    --output_dir data/train/$dir_split
+
+fi
+
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   # Test model, please specify the model you want to test by --checkpoint
   # stage 5 we test with aishell dataset,
 
@@ -340,16 +358,6 @@ if [ ${stage} -le 22 ] && [ ${stop_stage} -ge 22 ]; then
 fi
 
 
-# here i add extra stages for Noisy Student Training
-
-#first we split the wenetspeech datalist into N sublists
-if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
-  # Export the best model you want
-  python split_data_list.py \
-    --job_nums 100 \
-    --data_list_path data/train/data_wenet.list
-
-fi
 
 # stage 9 will perform inference on the given sublist(job num)
 # one need to specify the job_num and the test_dir
