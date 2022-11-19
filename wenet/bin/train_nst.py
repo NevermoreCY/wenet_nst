@@ -143,8 +143,8 @@ def main():
 
     symbol_table = read_symbol_table(args.symbol_table)
 
-    train_conf_aishell = configs['dataset_conf_aishell']
-    train_conf_wenetspeech = configs['dataset_conf_wenetspeech']
+    train_supervised_conf = configs['supervised_dataset_conf']
+    train_unsupervised_conf = configs['unsupervised_dataset_conf']
 
 
     print("*********train setting**************")
@@ -152,12 +152,12 @@ def main():
     print("unsupervised data list = ", args.train_data_unsupervised)
 
 
-    cv_conf = copy.deepcopy(train_conf_aishell)
+    cv_conf = copy.deepcopy(train_supervised_conf)
     # cv_conf['speed_perturb'] = False
     # cv_conf['spec_aug'] = False
 
     train_dataset_supervised = Dataset(args.data_type, args.train_data_supervised, symbol_table,
-                            train_conf_aishell, args.bpe_model, partition=True)
+                            train_supervised_conf, args.bpe_model, partition=True)
 
     train_data_loader_supervised = DataLoader(train_dataset_supervised,
                                    batch_size=None,
@@ -180,7 +180,7 @@ def main():
 
     if args.enable_nst:
         train_dataset_unsupervised = Dataset(args.data_type, args.train_data_unsupervised, symbol_table,
-                                train_conf_wenetspeech, args.bpe_model, partition=True)
+                                train_unsupervised_conf, args.bpe_model, partition=True)
         train_data_loader_unsupervised = DataLoader(train_dataset_unsupervised,
                                                     batch_size=None,
                                                     pin_memory=args.pin_memory,
@@ -190,7 +190,7 @@ def main():
     else:
         executor = Executor()
 
-    input_dim = configs['dataset_conf_aishell']['fbank_conf']['num_mel_bins']
+    input_dim = configs['supervised_dataset_conf']['fbank_conf']['num_mel_bins']
     vocab_size = len(symbol_table)
 
     # Save configs to model_dir/train.yaml for inference and export
