@@ -145,7 +145,6 @@ def main():
 
     train_conf_aishell = configs['dataset_conf_aishell']
     train_conf_wenetspeech = configs['dataset_conf_wenetspeech']
-    dataset_num = args.dataset_num
 
 
     print("*********train setting**************")
