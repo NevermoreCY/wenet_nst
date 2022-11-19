@@ -144,13 +144,12 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
 
     rank=`expr $node_rank \* $num_gpus + $i`
 
-    # "--train_data_supervised" is the path of datalist for supervised data, which refers to aishell-1 in the example.
-    # "--train_data_unsupervised" is the path of datalist for unsupervised data, which refers to wenetSpeech here.
-    # For supervised training, one could either set "--dataset_num" to 1 ,
+    # "--train_data_supervised" is the name of datalist for supervised data, which refers to aishell-1 in the example.
+    # "--train_data_unsupervised" is the name of datalist for unsupervised data, which refers to wenetSpeech here.
+    # both list should be stored under the train dir.
+    # For supervised training, one could either set "--enable_nst" to 0 ,
     # or set the config pseudo-ratio to 0 so that none of the pseudo data is used.
-    # For NST training, keep "--dataset_num" = 2.
-    # fuse batch should be set to zero. We tested different ways of fusing two dataset,
-    # however the outcome is pretty much similar and 0 is the fastest method.
+    # For NST training, keep "--enable_nst" = 1,
 
     python wenet/bin/train_nst.py --gpu $gpu_id \
       --config $train_config \
@@ -166,8 +165,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --ddp.rank $rank \
       --ddp.dist_backend $dist_backend \
       --num_workers 1 \
-      --dataset_num 2 \
-      --fuse_batch 0 \
+      --enable_nst 1 \
       $cmvn_opts \
       --pin_memory
   } &

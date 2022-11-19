@@ -30,6 +30,8 @@ from wenet.dataset.dataset import Dataset
 from wenet.transformer.asr_model import init_asr_model
 from wenet.utils.checkpoint import load_checkpoint, save_checkpoint
 from wenet.utils.executor import Executor
+from wenet.utils.executor_nst import Executor_nst
+# from wenet.utils.executor_nst import Executor
 from wenet.utils.file_utils import read_symbol_table
 from wenet.utils.scheduler import WarmupLR
 from wenet.utils.config import override_config
@@ -46,7 +48,7 @@ def get_args():
     parser.add_argument('--train_data_supervised', required=True, help='path for data.list for supervised data, '
                                                                        'eg. data/train_set/data_aishell.list  ')
     parser.add_argument('--train_data_unsupervised', required=True, help='path for data.list for unsupervised '
-                                                                         'sudo-label, eg. data/train_set/data_wenet')
+                                                                         'sudo-label, eg. data/train_set/data_wenet',default= None )
     parser.add_argument('--cv_data', required=True, help='cv data file')
     parser.add_argument('--gpu',
                         type=int,
@@ -109,15 +111,10 @@ def get_args():
                         action='append',
                         default=[],
                         help="override yaml config")
-    parser.add_argument('--dataset_num',
+    parser.add_argument('--enable_nst',
+                        default=1,
                         type=int,
-                        default=2,
-                        help="num of dataset used for training, current support 1 or 2")
-    parser.add_argument('--fuse_batch',
-                        default=0,
-                        type=int,
-                        help="whether or not fuse data in batch level, fustion will take extra training time. "
-                             "Default is not to use.")
+                        help='whether or not use unsupervised data')
 
     args = parser.parse_args()
     return args
@@ -150,28 +147,24 @@ def main():
     train_conf_wenetspeech = configs['dataset_conf_wenetspeech']
     dataset_num = args.dataset_num
 
-    fuse_batch = args.fuse_batch
 
     print("*********train setting**************")
-    print("dataset num = ", dataset_num)
-    print("fuse_batch = ", fuse_batch)
     print("supervised data list = ", args.train_data_supervised)
-    print("wenetspeech data list = ", args.train_data_unsupervised)
+    print("unsupervised data list = ", args.train_data_unsupervised)
 
 
     cv_conf = copy.deepcopy(train_conf_aishell)
-    cv_conf['speed_perturb'] = False
-    cv_conf['spec_aug'] = False
-
-
+    # cv_conf['speed_perturb'] = False
+    # cv_conf['spec_aug'] = False
 
     train_dataset_supervised = Dataset(args.data_type, args.train_data_supervised, symbol_table,
                             train_conf_aishell, args.bpe_model, partition=True)
 
-    train_dataset_unsupervised = Dataset(args.data_type, args.train_data_unsupervised, symbol_table,
-                            train_conf_wenetspeech, args.bpe_model, partition=True)
-
-
+    train_data_loader_supervised = DataLoader(train_dataset_supervised,
+                                   batch_size=None,
+                                   pin_memory=args.pin_memory,
+                                   num_workers=args.num_workers,
+                                   prefetch_factor=args.prefetch)
 
     cv_dataset = Dataset(args.data_type,
                          args.cv_data,
@@ -180,23 +173,23 @@ def main():
                          args.bpe_model,
                          partition=False)
 
-    train_data_loader_supervised = DataLoader(train_dataset_supervised,
-                                   batch_size=None,
-                                   pin_memory=args.pin_memory,
-                                   num_workers=args.num_workers,
-                                   prefetch_factor=args.prefetch)
-
-    train_data_loader_unsupervised = DataLoader(train_dataset_unsupervised,
-                                   batch_size=None,
-                                   pin_memory=args.pin_memory,
-                                   num_workers=args.num_workers,
-                                   prefetch_factor=args.prefetch)
-
     cv_data_loader = DataLoader(cv_dataset,
                                 batch_size=None,
                                 pin_memory=args.pin_memory,
                                 num_workers=args.num_workers,
                                 prefetch_factor=args.prefetch)
+
+    if args.enable_nst:
+        train_dataset_unsupervised = Dataset(args.data_type, args.train_data_unsupervised, symbol_table,
+                                train_conf_wenetspeech, args.bpe_model, partition=True)
+        train_data_loader_unsupervised = DataLoader(train_dataset_unsupervised,
+                                                    batch_size=None,
+                                                    pin_memory=args.pin_memory,
+                                                    num_workers=args.num_workers,
+                                                    prefetch_factor=args.prefetch)
+        executor = Executor_nst()
+    else:
+        executor = Executor()
 
     input_dim = configs['dataset_conf_aishell']['fbank_conf']['num_mel_bins']
     vocab_size = len(symbol_table)
@@ -224,7 +217,7 @@ def main():
     if args.rank == 0:
         script_model = torch.jit.script(model)
         script_model.save(os.path.join(args.model_dir, 'init.zip'))
-    executor = Executor()
+
     # If specify checkpoint, load some info from checkpoint
     print("check point is ", args.checkpoint)
     if args.checkpoint is not None:
@@ -288,9 +281,12 @@ def main():
         configs['epoch'] = epoch
         lr = optimizer.param_groups[0]['lr']
         logging.info('Epoch {} TRAIN info lr {}'.format(epoch, lr))
-        
-        executor.train(model, optimizer, scheduler, train_data_loader_supervised, train_data_loader_unsupervised , device,
-                       writer, configs, scaler, dataset_num, fuse_batch)
+        if args.enable_nst:
+            executor.train(model, optimizer, scheduler, train_data_loader_supervised, train_data_loader_unsupervised , device,
+                           writer, configs, scaler)
+        else:
+            executor.train(model, optimizer, scheduler, train_data_loader_supervised, device, writer,
+                  configs, scaler)
 
         total_loss, num_seen_utts = executor.cv(model, cv_data_loader, device,
                                                 configs)

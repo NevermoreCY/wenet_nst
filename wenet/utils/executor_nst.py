@@ -2,19 +2,21 @@
 # Author: binbinzhang@mobvoi.com (Binbin Zhang)
 
 import logging
+import random
 from contextlib import nullcontext
 # if your python version < 3.7 use the below one
 # from contextlib import suppress as nullcontext
 import torch
 from torch.nn.utils import clip_grad_norm_
+import torch.nn.functional as F
+import time
 
-
-class Executor:
+class Executor_nst:
     def __init__(self):
         self.step = 0
-
-    def train(self, model, optimizer, scheduler, data_loader, device, writer,
-              args, scaler):
+    # we modify the train so that we can have two input data_loader for
+    def train(self, model, optimizer, scheduler, data_loader_aishell, data_loader_wenetspeech, device, writer,
+              args, scaler, dataset_num, fuse_batch):
         ''' Train one epoch
         '''
         model.train()
@@ -37,13 +39,40 @@ class Executor:
         else:
             model_context = nullcontext
         num_seen_utts = 0
+
+        pseudo_ratio = float(args["pseudo_ratio"])
+        print("************** , pseudo_ratio is", pseudo_ratio, "********************")
         with model_context():
-            for batch_idx, batch in enumerate(data_loader):
-                key, feats, target, feats_lengths, target_lengths = batch
+            # --------------------------modification start ------------------------------------------
+            print(time.time(), "before loop")
+            iter_wenet = iter(data_loader_wenetspeech)
+            iter_aishell = iter(data_loader_aishell)
+            batch_idx = 0
+            dl_weight = [pseudo_ratio, 1 - pseudo_ratio]
+            # rng = random.Random
+            while True:
+
+                # print("batch id is ",batch_idx , "Time is ", time.time())
+                r = random.choices(population=[0, 1], weights=dl_weight, k=1)[0]
+                # print(now is random)
+                dl = iter_wenet if r == 0 else iter_aishell
+                try:
+                    key, feats, target, feats_lengths, target_lengths = next(dl)
+                except StopIteration:
+                    name = "wenet_speech" if r == 0 else "aishell"
+                    logging.info(f"{name} reaches end of dataloader for rank {rank}")
+                    break
+                # name = "wenet" if r <= pseudo_ratio else "aishell"
+                # print("current dataset : " , name )
+
+                # print("finish random time ", time.time())
+                batch_idx += 1
+
                 feats = feats.to(device)
                 target = target.to(device)
                 feats_lengths = feats_lengths.to(device)
                 target_lengths = target_lengths.to(device)
+                # print("Time after to device ", time.time())
                 num_utts = target_lengths.size(0)
                 if num_utts == 0:
                     continue
@@ -106,6 +135,11 @@ class Executor:
                     log_str += 'lr {:.8f} rank {}'.format(lr, rank)
                     logging.debug(log_str)
 
+            # case we are not fusing batch
+
+
+
+
     def cv(self, model, data_loader, device, args):
         ''' Cross validation on
         '''
@@ -118,6 +152,7 @@ class Executor:
         total_loss = 0.0
         with torch.no_grad():
             for batch_idx, batch in enumerate(data_loader):
+                #print("cv debug , batch_idx is, " , batch_idx, "rank is", rank, "epoch is", epoch )
                 key, feats, target, feats_lengths, target_lengths = batch
                 feats = feats.to(device)
                 target = target.to(device)
@@ -143,3 +178,17 @@ class Executor:
                     log_str += ' rank {}'.format(rank)
                     logging.debug(log_str)
         return total_loss, num_seen_utts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
