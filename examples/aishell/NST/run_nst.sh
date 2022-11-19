@@ -43,6 +43,7 @@ dir=""
 pseudo_data_list=""
 supervised_data_list=""
 gcmvn=""
+enable_nst=1
 checkpoint=
 average_num=30
 nj=16
@@ -101,6 +102,7 @@ echo "cer_out_dir is  ${cer_out_dir}"
 echo "text_file is ${text_file}"
 echo "average_num is ${average_num}"
 echo "checkpoint is ${checkpoint} "
+echo "enable_nst is ${enable_nst} "
 
 
 # we assumed that you have finished the data pre-process steps from -1 to 3 in aishell1/s0/run.sh .
@@ -165,7 +167,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
       --ddp.rank $rank \
       --ddp.dist_backend $dist_backend \
       --num_workers 1 \
-      --enable_nst 1 \
+      --enable_nst $enable_nst \
       $cmvn_opts \
       --pin_memory
   } &
