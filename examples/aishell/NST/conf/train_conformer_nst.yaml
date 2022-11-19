@@ -64,7 +64,7 @@ dataset_conf:
         batch_type: 'static' # static or dynamic
         batch_size: 32
 
-dataset_conf_aishell:
+supervised_dataset_conf:
     filter_conf:
         max_length: 1200 #40960
         min_length: 10 #0
@@ -94,7 +94,7 @@ dataset_conf_aishell:
         batch_type: 'static' # static or dynamic
         batch_size: 32
 
-dataset_conf_wenetspeech:
+unsupervised_dataset_conf:
     filter_conf:
         max_length: 1200 #40960
         min_length: 10 #0
