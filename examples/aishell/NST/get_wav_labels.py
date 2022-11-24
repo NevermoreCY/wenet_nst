@@ -15,7 +15,7 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser(description='sum up prediction wer')
-    parser.add_argument('--job_nums',type=int, default=8, help='number of total split dir')
+    parser.add_argument('--job_num',type=int, default=8, help='number of total split dir')
     parser.add_argument('--data_list_dir',required=True, help='the path to the data_list dir eg data/train/wenet1k_good_split_60/')
     parser.add_argument('--label', type=bool, default= False, help = 'if ture, label file will also be considered.')
     parser.add_argument('--hypo_name', type=str, required=True, help='the hypothesis path.  eg. /hypothesis_0.txt ')
@@ -26,7 +26,7 @@ def get_args():
 def main():
     args = get_args()
     data_list_dir = args.data_list_dir
-    num_lists = args.job_nums
+    num_lists = args.job_num
     hypo = args.hypothesis
     # wav_dir is the directory where your pair of ID.scp (the audio file ) and ID.txt (the optional label file ) file stored. We assumed that you have
     # generated this dir in data processing steps.
