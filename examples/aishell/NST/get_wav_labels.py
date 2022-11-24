@@ -17,7 +17,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='sum up prediction wer')
     parser.add_argument('--job_num',type=int, default=8, help='number of total split dir')
     parser.add_argument('--data_list_dir',required=True, help='the path to the data_list dir eg data/train/wenet1k_good_split_60/')
-    parser.add_argument('--label', type=bool, default= False, help = 'if ture, label file will also be considered.')
+    parser.add_argument('--label', type=int, default= 0, help = 'if ture, label file will also be considered.')
     parser.add_argument('--hypo_name', type=str, required=True, help='the hypothesis path.  eg. /hypothesis_0.txt ')
     parser.add_argument('--wav_dir', type=str, required=True, help='the wav dir path.  eg. data/train/wenet_1k_untar/ ')
     args = parser.parse_args()
