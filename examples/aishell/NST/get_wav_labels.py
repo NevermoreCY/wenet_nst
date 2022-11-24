@@ -31,6 +31,7 @@ def main():
     # wav_dir is the directory where your pair of ID.scp (the audio file ) and ID.txt (the optional label file ) file stored. We assumed that you have
     # generated this dir in data processing steps.
     wav_dir = args.wav_dir
+    label = args.label
 
     print("data_list_path is", data_list_dir)
     print("num_lists is", num_lists)
@@ -53,6 +54,7 @@ def main():
     labels = []
     bad_files = []
     for x in hypo_lines:
+        # print(c)
         c += 1
         file_id = x.split()[0]
 
@@ -60,25 +62,26 @@ def main():
         wav_path = wav_dir + file_id + ".wav\n"
         wav_line = file_id + " " + wav_path
         wavs.append(wav_line)
+        if label:
+            try:
+                with open(label_path, 'r', encoding="utf-8") as reader1:
+                    label_line = reader1.readline()
+            except OSError as e:
+                bad_files.append(label_path)
 
-        try:
-            with open(label_path, 'r', encoding="utf-8") as reader1:
-                label_line = reader1.readline()
-        except OSError as e:
-            bad_files.append(label_path)
-
-        label_line = file_id + " " + label_line + "\n"
-        labels.append(label_line)
+            label_line = file_id + " " + label_line + "\n"
+            labels.append(label_line)
 
     with open(output_wav, 'w', encoding="utf-8") as writer2:
         for wav in wavs:
             writer2.write(wav)
-    with open(output_label, 'w', encoding="utf-8") as writer3:
-        for label in labels:
-            writer3.write(label)
     with open(output_bad_lines, 'w', encoding="utf-8") as writer4:
         for line in bad_files:
             writer4.write(line)
+    if label:
+        with open(output_label, 'w', encoding="utf-8") as writer3:
+            for label in labels:
+                writer3.write(label)
 
 if __name__ == '__main__':
     main()
