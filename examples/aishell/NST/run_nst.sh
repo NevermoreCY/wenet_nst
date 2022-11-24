@@ -35,7 +35,6 @@ stop_stage=5
 # here are extra parameters used in NST
 data_list_dir=""
 job_num=-1
-wav_label_dir=""
 cer_out_dir=""
 text_file=""
 hypo_name=""
@@ -100,7 +99,6 @@ echo "pseudo data list is ${pseudo_data_list}"
 echo "supervised data list is ${supervised_data_list}"
 echo "data_list_dir is ${data_list_dir}"
 echo "job_num is ${job_num}"
-echo "wav_label_dir is ${wav_label_dir}"
 echo "cer_out_dir is  ${cer_out_dir}"
 echo "text_file is ${text_file}"
 echo "average_num is ${average_num}"
@@ -275,7 +273,7 @@ fi
 # stage 4 will perform inference without language model on the given sublist(job num)
 # here is example usages:
 # bash run_nst.sh --stage 4 --stop-stage 4 --job_num $i --data_list_dir data/train/wenet_4khr_split_60/
-# --hypo_name hypothesis_nst4.txt --dir exp/conformer_aishell2_wenet4k_nst4
+# --hypo_name hypothesis_0.txt --dir exp/conformer_aishell2_wenet4k_nst4
 # You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
@@ -314,10 +312,11 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 
 fi
 
-# Calculate cer between hypothesis with and without language model
+# Calculate cer between hypothesis with and without language model. We assumed that you have finished language model
+# training using the wenet aishell-1 pipline. (You should have data/lang/words.txt , data/lang/TLG.fst files ready.)
 # Here is an exmaple usage:
-# bash run_nst.sh --stage 5 --stop-stage 5 --job_num n --wav_label_dir data/train/wenet1k_redo_split_60/
-# --cer_out_dir wenet1k_cer_hypo --text_file hypothesis_nst6.txt --dir exp/conformer_no_filter_redo_nst6
+# bash run_nst.sh --stage 5 --stop-stage 5 --job_num n --data_list_dir data/train/wenet1k_redo_split_60/
+# --cer_out_dir wenet1k_cer_hypo --text_file hypothesis_nst.txt --dir exp/conformer_no_filter_redo_nst6
 # You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
@@ -327,9 +326,9 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   test_dir=$dir/test_${mode}_${job_num}
   now=$(date +"%T")
   echo "start time : $now"
-  echo "GPU dir is " $job_num "wav_label_dir is " $wav_label_dir "nj is" $nj "text_file is" $text_file "cer out is" $cer_out_dir "lm is 4gram"
+  echo "GPU dir is " $job_num "data_list_dir is " $data_list_dir "nj is" $nj "text_file is" $text_file "cer out is" $cer_out_dir "lm is 4gram"
   echo "dir is " $dir
-  if [ ! -f ${wav_label_dir}data_wenet${job_num}/${text_file}  ]; then
+  if [ ! -f ${data_list_dir}data_sublist${job_num}/${text_file}  ]; then
   echo "text file does not exists"
   exit 1;
   fi
@@ -339,7 +338,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
     --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
     --chunk_size $chunk_size \
     --fst_path data/lang_test/TLG.fst \
-    ${wav_label_dir}data_wenet${job_num}/wav.scp ${wav_label_dir}data_wenet${job_num}/${text_file} $dir/final.zip \
+    ${data_list_dir}data_sublist${job_num}/wav.scp ${data_list_dir}data_sublist${job_num}/${text_file} $dir/final.zip \
     data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_out_dir}_${job_num}
   now=$(date +"%T")
   echo "end time : $now"
