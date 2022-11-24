@@ -192,6 +192,13 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
       --num ${average_num} \
       --val_best
   fi
+
+  # export model
+  python wenet/bin/export_jit.py \
+    --config $dir/train.yaml \
+    --checkpoint $dir/avg_${average_num}.pt \
+    --output_file $dir/final.zip \
+    --output_quant_file $dir/final_quant.zip
   # Please specify decoding_chunk_size for unified streaming and
   # non-streaming model. The default value is -1, which is full chunk
   # for non-streaming inference.
@@ -254,13 +261,9 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 fi
 
 
-
-
 # split the (unsupervised) datalist into N sublists, where N depends on the number of available cpu in your cluster.
 # when making inference, we compute N sublist in parallel.
-
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-  # Export the best model you want
   python split_data_list.py \
     --job_nums $num_split \
     --data_list_path data/train/$data_list \
@@ -269,119 +272,15 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 fi
 
 
-
-
-
-if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-  # Test model, please specify the model you want to test by --checkpoint
-  # stage 5 we test with aishell dataset,
-
-  decode_checkpoint=$dir/avg_${average_num}.pt
-  echo "do model average and final checkpoint is $decode_checkpoint"
-  decoding_chunk_size=
-  ctc_weight=0.5
-  reverse_weight=0.0
-
-  # dev_wer
-  for mode in ${decode_modes}; do
-  {
-    #test_dir=$dir/test_${mode}_${target_pt}pt  # for target pt
-    dev_dir=$dir/dev_${mode}_ep240_${average_num}pt   # for average pt
-    mkdir -p $dev_dir
-    python wenet/bin/recognize.py --gpu 0 \
-      --mode $mode \
-      --config $dir/train.yaml \
-      --data_type $data_type \
-      --test_data data/dev/data.list \
-      --checkpoint $decode_checkpoint \
-      --beam_size 10 \
-      --batch_size 1 \
-      --penalty 0.0 \
-      --dict $dict \
-      --ctc_weight $ctc_weight \
-      --reverse_weight $reverse_weight \
-      --result_file $dev_dir/text \
-      ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
-    echo "before compute-wer"
-    python tools/compute-wer.py --char=1 --v=1 \
-      data/dev/text $dev_dir/text > $dev_dir/wer
-  } &
-  done
-  wait
-fi
-
-
-
-if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
-  # Export the best model you want
-  python wenet/bin/export_jit.py \
-    --config $dir/train.yaml \
-    --checkpoint $dir/avg_${average_num}.pt \
-    --output_file $dir/final.zip \
-    --output_quant_file $dir/final_quant.zip
-fi
-
-# Optionally, you can add LM and test it with runtime.
-if [ ${stage} -le 22 ] && [ ${stop_stage} -ge 22 ]; then
-#   #7.1 Prepare dict
-#  unit_file=$dict
-#  mkdir -p data/local/dict
-#  cp $unit_file data/local/dict/units.txt
-#  tools/fst/prepare_dict.py $unit_file data/resource_aishell/lexicon.txt \
-#    data/local/dict/lexicon.txt
-#   #7.2 Train lm
-#  lm=data/local/lm
-#  mkdir -p $lm
-#  tools/filter_scp.pl data/train/text \
-#    $data/transcript/aishell_transcript_v0.8.txt > $lm/text
-  echo "step0"
-  local/aishell_train_lms.sh
-#  # 7.3 Build decoding TLG
-  echo "step1"
-  tools/fst/compile_lexicon_token_fst.sh \
-    data/local/dict data/local/tmp data/local/lang
-  echo "step2"
-  tools/fst/make_tlg.sh data/local/lm data/local/lang data/lang_test_aishell2 || exit 1;
-  echo "step3"
-  # 7.4 Decoding with runtime
-#  echo "start "
-#  now=$(date +"%T")
-#  echo "Current time : $now"
-#  chunk_size=-1
-#  ./tools/decode.sh --nj 6 \
-#    --beam 15.0 --lattice_beam 7.5 --max_active 7000 \
-#    --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
-#    --chunk_size $chunk_size \
-#    --fst_path data/lang_test/TLG.fst \
-#    data/test/wav.scp data/test/text $dir/final.zip \
-#    data/lang_test/words.txt $dir/lm_with_runtime_split_6
-#  echo "end"
-#  now=$(date +"%T")
-#  echo "Current time : $now"
-#   Please see $dir/lm_with_runtime for wer
-fi
-
-
-
-# stage 9 will perform inference on the given sublist(job num)
-# one need to specify the job_num and the test_dir
+# stage 4 will perform inference on the given sublist(job num)
 # here is example usages:
-# bash run_nst_1.sh --stage 9 --stop-stage 9 --job_num 0 --data_list_dir data/train/data_LM_diff_10/
-# bash run_nst_1.sh --stage 9 --stop-stage 9 --job_num 0 --data_list_dir data/train/data_wenet_1k_split_100/
-# --data_list_dir data/train/data_LM_diff_10/
-if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then
+# bash run_nst.sh --stage 4 --stop-stage 4 --job_num $i --data_list_dir data/train/wenet_4khr_split_60/
+# --hypo_name hypothesis_nst4.txt --dir exp/conformer_aishell2_wenet4k_nst4
+# You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
+# "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   echo "start time : $now"
-  # Test model, please specify the model you want to test by --checkpoint
-#  if [ ${average_checkpoint} == true ]; then
-#    decode_checkpoint=$dir/avg_${average_num}.pt
-#    echo "do model average and final checkpoint is $decode_checkpoint"
-#    python wenet/bin/average_model.py \
-#      --dst_model $decode_checkpoint \
-#      --src_path $dir  \
-#      --num ${average_num} \
-#      --val_best
-#  fi
-  # we assume you have run stage 5 so that avg_${average_num}.pt exists
+  # we assume you have run stage 2 so that avg_${average_num}.pt exists
   decode_checkpoint=$dir/avg_${average_num}.pt
   # Please specify decoding_chunk_size for unified streaming and
   # non-streaming model. The default value is -1, which is full chunk
@@ -395,8 +294,7 @@ if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then
   echo "data_list dir is  ${data_list_dir}"
   echo "hypo name is " $hypo_name
   echo "dir is ${dir}"
-  #test_dir=$dir/hypothesis_without_lm_cer_hypo_filter/test_${mode}_${job_num}
-  #mkdir -p $test_dir
+
   python wenet/bin/recognize.py --gpu $gpu_id \
     --mode $mode \
     --config $dir/train.yaml \
@@ -412,8 +310,7 @@ if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then
     --result_file ${data_list_dir}data_wenet${job_num}/${hypo_name} \
     ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
     echo "end time : $now"
-#  python tools/compute-wer.py --char=1 --v=1 \
-#    data/test/text $test_dir/text > $test_dir/wer
+
 fi
 
 # language model
