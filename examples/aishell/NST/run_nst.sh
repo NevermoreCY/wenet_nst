@@ -319,11 +319,10 @@ fi
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   python get_wav_labels.py \
     --job_nums $num_split \
-    --data_list_path data/train/$data_list \
+    --data_list_path $data_list \
     --label $label \
     --hypothesis $hypo_path \
-    --wav_dir $wav_dir \
-
+    --wav_dir $wav_dir 
 fi
 
 # Calculate cer between hypothesis with and without language model. We assumed that you have finished language model

@@ -11,7 +11,7 @@ import argparse
 # python generate_wav_labels_without_label_dir.py --job_nums=0 --data_list_dir=data/train/wenet_4khr_split_60/
 
 # python generate_wav_labels_without_label_dir.py --job_nums=0 --data_list_dir=data/train/wenet1k_redo_split_60/
-
+#bash run_nst.sh --stage 5 --stop-stage 5 --job_num 0 --data_list_dir data/train/wenet_split_60_test/ --hypo_name hypothesis_0.txt --label false --wav_dir data/train/wenet_1k_untar/
 
 def get_args():
     parser = argparse.ArgumentParser(description='sum up prediction wer')
