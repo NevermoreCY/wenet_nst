@@ -315,7 +315,13 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 fi
 
 
-#
+# Generate wav.scp file and label.txt file(optional) for each sublist we generated in step 3.
+# the wav_dir should be prepared in data processing step as we mentioned.
+#You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data,
+# "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
+# wav_dir is the directory that stores raw wav file and possible labels.
+# if you have label for unsupervised dataset, set label = 1 other wise keep it 0
+# For each gpu or cpu, you can run with different job_num to perform data-wise parallel computing.
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   python get_wav_labels.py \
     --data_list_dir $data_list_dir \
