@@ -50,7 +50,7 @@ num_split=""
 data_list=""
 dir_split=""
 label=false
-hypo_path=""
+hypo_name=""
 wav_dir=""
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
@@ -318,11 +318,11 @@ fi
 #
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   python get_wav_labels.py \
-    --job_nums $num_split \
+    --job_nums $job_num \
     --data_list_path $data_list \
     --label $label \
-    --hypothesis $hypo_path \
-    --wav_dir $wav_dir 
+    --hypothesis $hypo_name \
+    --wav_dir $wav_dir
 fi
 
 # Calculate cer between hypothesis with and without language model. We assumed that you have finished language model
