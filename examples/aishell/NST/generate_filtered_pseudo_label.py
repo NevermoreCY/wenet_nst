@@ -12,11 +12,11 @@ import json
 def get_args():
     parser = argparse.ArgumentParser(description='out_put predictions')
     parser.add_argument('--dir_num',required=True,help='directory number')
-
+    parser.add_argument('--cer_hypo_name', required=True, help='prefix for cer_hypo_dir')
     parser.add_argument('--utter_time_file', required=True, help='the cer threshold we use to filter')
     parser.add_argument('--cer_hypo_threshold', required=True,type=float, help='the cer threshold we use to filter')
     parser.add_argument('--speak_rate_threshold',type=float, help='the cer threshold we use to filter')
-    parser.add_argument('--cer_hypo_dir', required=True,   help='the cer threshold we use to filter')
+    parser.add_argument('--dir', required=True,   help='dir for the experiment ')
     # output untar and tar
     parser.add_argument('--output_dir',required=True, help='the output path, eg: data/train/wenet_untar_6_5_cer_hypo_leq_10_nst1/')
     parser.add_argument('--tar_dir', required=True,
@@ -35,7 +35,7 @@ def main():
     args = get_args()
 
     dir_num = args.dir_num
-    cer_hypo_dir = args.cer_hypo_dir
+    dir = args.dir
     output_dir = args.output_dir
     cer_hypo_threshold = args.cer_hypo_threshold
     speak_rate_threshold = args.speak_rate_threshold
@@ -45,6 +45,7 @@ def main():
     start_tar_id = args.start_tar_id
     os.makedirs(tar_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
+    cer_hypo_name = args.cer_hypo_name
     print("start tar id is", start_tar_id)
     print("make dirs")
 
@@ -77,7 +78,7 @@ def main():
     cer_dict = {}
 
     print("dir_num = ", dir_num)
-    cer_hypo_path = cer_hypo_dir + str(dir_num)
+    cer_hypo_path = dir + "/Hypo_LM_diff10/" + cer_hypo_name+ dir_num + "/wer"
     with open(cer_hypo_path, 'r', encoding="utf-8") as reader:
         data = reader.readlines()
 
