@@ -18,7 +18,8 @@ def get_args():
     parser.add_argument('--job_nums',type=int, default=8, help='number of total split dir')
     parser.add_argument('--data_list_dir',required=True, help='the path to the data_list dir eg data/train/wenet1k_good_split_60/')
     parser.add_argument('--label', type=bool, default= False, help = 'if ture, label file will also be considered.')
-    parser.add_argument('--hypothesis', type=str, required=True, help='the hypothesis name.  eg. /hypothesis_0.txt ')
+    parser.add_argument('--hypothesis', type=str, required=True, help='the hypothesis path.  eg. /hypothesis_0.txt ')
+    parser.add_argument('--wav_dir', type=str, required=True, help='the wav dir path.  eg. data/train/wenet_1k_untar/ ')
     args = parser.parse_args()
     return args
 
@@ -28,12 +29,13 @@ def main():
     num_lists = args.job_nums
     hypo = args.hypothesis
     # wav_dir is the directory where your pair of ID.scp (the audio file ) and ID.txt (the optional label file ) file stored. We assumed that you have
-    # this
-    wav_dir = "data/train/wenet_1k_untar/"
+    # generated this dir in data processing steps.
+    wav_dir = args.wav_dir
 
     print("data_list_path is", data_list_dir)
     print("num_lists is", num_lists)
     print("hypo is", hypo)
+    print("wav_dir is", wav_dir)
 
     i = num_lists
     c = 0

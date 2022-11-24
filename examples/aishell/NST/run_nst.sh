@@ -49,7 +49,9 @@ nj=16
 num_split=""
 data_list=""
 dir_split=""
-
+label=false
+hypo_path=""
+wav_dir=""
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 
@@ -312,6 +314,18 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 
 fi
 
+
+#
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+  python get_wav_label.py \
+    --job_nums $num_split \
+    --data_list_path data/train/$data_list \
+    --label $label \
+    --hypothesis $hypo_path \
+    --wav_dir $wav_dir \
+
+fi
+
 # Calculate cer between hypothesis with and without language model. We assumed that you have finished language model
 # training using the wenet aishell-1 pipline. (You should have data/lang/words.txt , data/lang/TLG.fst files ready.)
 # Here is an exmaple usage:
@@ -320,7 +334,7 @@ fi
 # You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
-if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
   chunk_size=-1
   mode="attention_rescoring"
   test_dir=$dir/test_${mode}_${job_num}
