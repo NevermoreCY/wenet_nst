@@ -320,7 +320,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   python get_wav_labels.py \
     --hypo_name $hypo_name \
     --wav_dir $wav_dir\
-    --data_list_dir $data_list \
+    --data_list_dir $data_list_dir \
     --job_num $job_num \
     --label $label
 fi
