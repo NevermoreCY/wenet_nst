@@ -272,12 +272,13 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
 fi
 
 
-# stage 4 will perform inference on the given sublist(job num)
+# stage 4 will perform inference without language model on the given sublist(job num)
 # here is example usages:
 # bash run_nst.sh --stage 4 --stop-stage 4 --job_num $i --data_list_dir data/train/wenet_4khr_split_60/
 # --hypo_name hypothesis_nst4.txt --dir exp/conformer_aishell2_wenet4k_nst4
 # You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
+# For each gpu, you can run with different job_num to perform data-wise parallel computing.
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   echo "start time : $now"
   # we assume you have run stage 2 so that avg_${average_num}.pt exists
@@ -299,7 +300,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     --mode $mode \
     --config $dir/train.yaml \
     --data_type $data_type \
-    --test_data ${data_list_dir}data_wenet${job_num}/data_list \
+    --test_data ${data_list_dir}data_sublist${job_num}/data_list \
     --checkpoint $decode_checkpoint \
     --beam_size 10 \
     --batch_size 1 \
@@ -307,15 +308,20 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     --dict $dict \
     --ctc_weight $ctc_weight \
     --reverse_weight $reverse_weight \
-    --result_file ${data_list_dir}data_wenet${job_num}/${hypo_name} \
+    --result_file ${data_list_dir}data_sublist${job_num}/${hypo_name} \
     ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
     echo "end time : $now"
 
 fi
 
-# language model
-#  bash run_nst_1.sh --stage 10 --stop-stage 10 --job_num 0 --wav_label_dir
-if [ ${stage} -le 10 ] && [ ${stop_stage} -ge 10 ]; then
+# Calculate cer between hypothesis with and without language model
+# Here is an exmaple usage:
+# bash run_nst.sh --stage 5 --stop-stage 5 --job_num n --wav_label_dir data/train/wenet1k_redo_split_60/
+# --cer_out_dir wenet1k_cer_hypo --text_file hypothesis_nst6.txt --dir exp/conformer_no_filter_redo_nst6
+# You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
+# "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
+# For each gpu, you can run with different job_num to perform data-wise parallel computing.
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   chunk_size=-1
   mode="attention_rescoring"
   test_dir=$dir/test_${mode}_${job_num}
