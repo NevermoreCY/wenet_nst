@@ -49,7 +49,7 @@ nj=16
 num_split=""
 data_list=""
 dir_split=""
-label=false
+label=0
 hypo_name=""
 wav_dir=""
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
