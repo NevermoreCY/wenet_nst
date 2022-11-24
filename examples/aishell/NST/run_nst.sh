@@ -318,7 +318,7 @@ fi
 #
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   python get_wav_labels.py \
-    --job_nums $job_num \
+    --job_num $job_num \
     --data_list_path $data_list \
     --label $label \
     --hypothesis $hypo_name \
