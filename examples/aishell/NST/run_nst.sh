@@ -36,6 +36,8 @@ stop_stage=5
 data_list_dir=""
 job_num=-1
 cer_out_dir=""
+cer_hypo_dir=""
+cer_label_dir=""
 text_file=""
 hypo_name=""
 dir=""
@@ -53,13 +55,18 @@ label=0
 hypo_name=""
 wav_dir=""
 label_file="label"
+cer_hypo_threshold=10
+speak_rate_threshold=0
+utter_time_file="utter_time.json"
+tar_dir=""
+untar_dir=""
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 
 num_nodes=1
 
 # The rank of each node or machine, which ranges from 0 to `num_nodes - 1`.
-# You should set the node_rank=0 on the first machine, set the node_rank=1
+# You should set the node_ranHk=0 on the first machine, set the node_rank=1
 # on the second machine, and so on.
 node_rank=0
 
@@ -327,29 +334,31 @@ fi
 # if you have label for unsupervised dataset, set label = 1 other wise keep it 0
 # For each gpu or cpu, you can run with different job_num to perform data-wise parallel computing.
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+  echo "********stage 5 start time : $now ********"
   python get_wav_labels.py \
-    --data_list_dir $data_list_dir \
+    --dir_split data/train/${dir_split} \
     --hypo_name /$hypo_name \
     --wav_dir $wav_dir\
     --job_num $job_num \
     --label $label
 fi
 
-# Calculate cer between hypothesis with and without language model. We assumed that you have finished language model
+# Calculate cer-hypo between hypothesis with and without language model. We assumed that you have finished language model
 # training using the wenet aishell-1 pipline. (You should have data/lang/words.txt , data/lang/TLG.fst files ready.)
 # Here is an exmaple usage:
 # bash run_nst.sh --stage 5 --stop-stage 5 --job_num n --data_list_dir data/train/wenet1k_redo_split_60/
-# --cer_out_dir wenet1k_cer_hypo --text_file hypothesis_nst.txt --dir exp/conformer_no_filter_redo_nst6
+# --cer_hypo_dir wenet1k_cer_hypo --text_file hypothesis_nst.txt --dir exp/conformer_no_filter_redo_nst6
 # You need to specify the "job_num" n (n <= N), "data_list_dir" which is the dir path for split data
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
 if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
+  echo "********stage 6 start time : $now ********"
   chunk_size=-1
   mode="attention_rescoring"
   test_dir=$dir/test_${mode}_${job_num}
   now=$(date +"%T")
   echo "start time : $now"
-  echo "GPU dir is " $job_num "data_list_dir is " $data_list_dir "nj is" $nj "text_file is" $text_file "cer out is" $cer_out_dir "lm is 4gram"
+  echo "GPU dir is " $job_num "data_list_dir is " $data_list_dir "nj is" $nj "text_file is" $hypo_name "cer out is" $cer_hypo_dir "lm is 4gram"
   echo "dir is " $dir
   if [ ! -f ${data_list_dir}data_sublist${job_num}/${text_file}  ]; then
   echo "text file does not exists"
@@ -361,35 +370,61 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
     --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
     --chunk_size $chunk_size \
     --fst_path data/lang_test/TLG.fst \
-    ${data_list_dir}data_sublist${job_num}/wav.scp ${data_list_dir}data_sublist${job_num}/${text_file} $dir/final.zip \
-    data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_out_dir}_${job_num}
+    ${data_list_dir}data_sublist${job_num}/wav.scp ${data_list_dir}data_sublist${job_num}/${hypo_name} $dir/final.zip \
+    data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_hypo_dir}_${job_num}
+  now=$(date +"%T")
+  echo "end time : $now"
+fi
+
+# (optional, only run this stage if you have true label for unsupervised data.)
+# Calculate cer-label between true label and hypothesis with language model.
+# You can use the output cer to evaluate NST's performance.
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
+  echo "********stage 7 start time : $now ********"
+  chunk_size=-1
+  mode="attention_rescoring"
+  test_dir=$dir/test_${mode}_${job_num}
+  now=$(date +"%T")
+  echo "start time : $now"
+  echo "GPU dir is " $job_num "data_list_dir is " $data_list_dir "nj is" $nj "text_file is" $label_file "cer out is" $cer_label_dir "lm is 4gram"
+  echo "dir is " $dir
+  if [ ! -f ${data_list_dir}data_sublist${job_num}/${text_file}  ]; then
+  echo "text file does not exists"
+  exit 1;
+  fi
+
+  ./tools/decode.sh --nj 16 \
+    --beam 15.0 --lattice_beam 7.5 --max_active 7000 \
+    --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
+    --chunk_size $chunk_size \
+    --fst_path data/lang_test/TLG.fst \
+    ${data_list_dir}data_sublist${job_num}/wav.scp ${data_list_dir}data_sublist${job_num}/${label_file} $dir/final.zip \
+    data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_label_dir}_${job_num}
   now=$(date +"%T")
   echo "end time : $now"
 fi
 
 
-if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
-  chunk_size=-1
-  mode="attention_rescoring"
-  test_dir=$dir/test_${mode}_${job_num}
-  now=$(date +"%T")
-  echo "start time : $now"
-  echo "GPU dir is " $job_num "data_list_dir is " $data_list_dir "nj is" $nj "text_file is" $label_file "cer out is" $cer_out_dir "lm is 4gram"
-  echo "dir is " $dir
-  if [ ! -f ${data_list_dir}data_sublist${job_num}/${text_file}  ]; then
-  echo "text file does not exists"
-  exit 1;
-  fi
+if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
+  echo "********stage 8 start time : $now ********"
+  python local/generate_filtered_pseudo_label.py  \
+    --dir_num $job_num \
+    --cer_hypo_dir $cer_hypo_dir \
+    --cer_hypo_threshold $cer_hypo_threshold\
+    --speak_rate_threshold $speak_rate_threshold \
+    --dir $dir \
+    --untar_dir $untar_dir \
+    --tar_dir $tar_dir \
+    --wavdir $wav_dir \
+    --utter_time_file $utter_time_file
 
-  ./tools/decode.sh --nj 16 \
-    --beam 15.0 --lattice_beam 7.5 --max_active 7000 \
-    --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
-    --chunk_size $chunk_size \
-    --fst_path data/lang_test/TLG.fst \
-    ${data_list_dir}data_sublist${job_num}/wav.scp ${data_list_dir}data_sublist${job_num}/${text_file} $dir/final.zip \
-    data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_out_dir}_${job_num}
-  now=$(date +"%T")
-  echo "end time : $now"
+  python generate_filtered_pseudo_label.py  \
+    --dir_num $job_num \
+    --cer_hypo_dir $cer_hypo_dir \
+    --cer_hypo_threshold $cer_hypo_threshold\
+    --speak_rate_threshold $speak_rate_threshold \
+    --utter_time_file $utter_time_file \
+
 fi
 
 
