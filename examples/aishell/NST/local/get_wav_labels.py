@@ -6,11 +6,11 @@ import argparse
 
 #merged_step 1:
 
-#bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_test_fully_supervised --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1k_tar_10_11_nss7.list --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst0.txt --label 1 --wav_dir data/train/wenet_1k_untar/ --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0 --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar/ --tar_dir data/train/wenet_1khr_tar/ --out_data_list data/train/wenet_1khr.list
+#bash run_nst.sh  --stage 5 --stop-stage 5 --dir exp/conformer_test_fully_supervised --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1khr.list --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst0.txt --label 1 --wav_dir data/train/wenet_1k_untar/ --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0 --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar/ --tar_dir data/train/wenet_1khr_tar/ --out_data_list data/train/wenet_1khr.list 2>&1 | tee logs/log_12_4_step5
 
 
 #bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_test_fully_supervised
-# --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1k_tar_10_11_nss7.list
+# --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1khr.list
 # --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst0.txt --label 1 --wav_dir data/train/wenet_1k_untar/
 # --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0
 # --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar/ --tar_dir data/train/wenet_1khr_tar/ --out_data_list data/train/wenet_1khr.list
@@ -29,7 +29,7 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser(description='sum up prediction wer')
     parser.add_argument('--job_num',type=int, default=8, help='number of total split dir')
-    parser.add_argument('--data_list_dir',required=True, help='the path to the data_list dir eg data/train/wenet1k_good_split_60/')
+    parser.add_argument('--dir_split',required=True, help='the path to the data_list dir eg data/train/wenet1k_good_split_60/')
     parser.add_argument('--label', type=int, default= 0, help = 'if ture, label file will also be considered.')
     parser.add_argument('--hypo_name', type=str, required=True, help='the hypothesis path.  eg. /hypothesis_0.txt ')
     parser.add_argument('--wav_dir', type=str, required=True, help='the wav dir path.  eg. data/train/wenet_1k_untar/ ')

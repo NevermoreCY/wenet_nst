@@ -34,7 +34,7 @@ stop_stage=5
 
 # here are extra parameters used in NST
 data_list_dir=""
-job_num=-1
+job_num=0
 cer_out_dir=""
 cer_hypo_dir=""
 cer_label_dir=""
@@ -48,13 +48,13 @@ enable_nst=1
 checkpoint=
 average_num=30
 nj=16
-num_split=""
+num_split=1
 data_list=""
 dir_split=""
 label=0
 hypo_name=""
 wav_dir=""
-label_file="label"
+label_file="label.txt"
 cer_hypo_threshold=10
 speak_rate_threshold=0
 utter_time_file="utter_time.json"
@@ -274,7 +274,7 @@ fi
 
 # split the (unsupervised) datalist into N sublists, where N depends on the number of available cpu in your cluster.
 # when making inference, we compute N sublist in parallel.
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ] && [ ${enable_nst} -eq 0 ]; then
   echo "********stage 3 start time : $now ********"
   python split_data_list.py \
     --job_nums $num_split \
@@ -334,7 +334,7 @@ fi
 # wav_dir is the directory that stores raw wav file and possible labels.
 # if you have label for unsupervised dataset, set label = 1 other wise keep it 0
 # For each gpu or cpu, you can run with different job_num to perform data-wise parallel computing.
-if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ] && [ ${enable_nst} -eq 0 ]; then
   echo "********stage 5 start time : $now ********"
   python get_wav_labels.py \
     --dir_split data/train/${dir_split} \
@@ -380,7 +380,7 @@ fi
 # (optional, only run this stage if you have true label for unsupervised data.)
 # Calculate cer-label between true label and hypothesis with language model.
 # You can use the output cer to evaluate NST's performance.
-if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
   echo "********stage 7 start time : $now ********"
   chunk_size=-1
   mode="attention_rescoring"
