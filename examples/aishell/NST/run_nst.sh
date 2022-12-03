@@ -52,6 +52,7 @@ dir_split=""
 label=0
 hypo_name=""
 wav_dir=""
+label_file="label"
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 
@@ -117,6 +118,7 @@ echo "enable_nst is ${enable_nst} "
 
 # stage 1 is for training
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
+  echo "********stage 1 start time : $now ********"
   mkdir -p $dir
   # You have to rm `INIT_FILE` manually when you resume or restart a
   # multi-machine training.
@@ -183,6 +185,7 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   # Test model, please specify the model you want to test by --checkpoint
   # stage 5 we test with aishell dataset,
+  echo "******** stage 2 start time : $now ********"
   if [ ${average_checkpoint} == true ]; then
     decode_checkpoint=$dir/avg_${average_num}.pt
     echo "do model average and final checkpoint is $decode_checkpoint"
@@ -264,6 +267,7 @@ fi
 # split the (unsupervised) datalist into N sublists, where N depends on the number of available cpu in your cluster.
 # when making inference, we compute N sublist in parallel.
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+  echo "********stage 3 start time : $now ********"
   python split_data_list.py \
     --job_nums $num_split \
     --data_list_path data/train/$data_list \
@@ -280,7 +284,7 @@ fi
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-  echo "start time : $now"
+  echo "********stage 4 start time : $now ********"
   # we assume you have run stage 2 so that avg_${average_num}.pt exists
   decode_checkpoint=$dir/avg_${average_num}.pt
   # Please specify decoding_chunk_size for unified streaming and
@@ -292,7 +296,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   mode="attention_rescoring"
   gpu_id=0
   echo "job number  ${job_num} "
-  echo "data_list dir is  ${data_list_dir}"
+  echo "data_list dir is  ${dir_split}"
   echo "hypo name is " $hypo_name
   echo "dir is ${dir}"
 
@@ -300,7 +304,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     --mode $mode \
     --config $dir/train.yaml \
     --data_type $data_type \
-    --test_data ${data_list_dir}data_sublist${job_num}/data_list \
+    --test_data data/train/${dir_split}data_sublist${job_num}/data_list \
     --checkpoint $decode_checkpoint \
     --beam_size 10 \
     --batch_size 1 \
@@ -308,7 +312,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
     --dict $dict \
     --ctc_weight $ctc_weight \
     --reverse_weight $reverse_weight \
-    --result_file ${data_list_dir}data_sublist${job_num}/${hypo_name} \
+    --result_file data/train/${dir_split}data_sublist${job_num}/${hypo_name} \
     ${decoding_chunk_size:+--decoding_chunk_size $decoding_chunk_size}
     echo "end time : $now"
 
@@ -325,7 +329,7 @@ fi
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
   python get_wav_labels.py \
     --data_list_dir $data_list_dir \
-    --hypo_name $hypo_name \
+    --hypo_name /$hypo_name \
     --wav_dir $wav_dir\
     --job_num $job_num \
     --label $label
@@ -362,6 +366,33 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
   now=$(date +"%T")
   echo "end time : $now"
 fi
+
+
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
+  chunk_size=-1
+  mode="attention_rescoring"
+  test_dir=$dir/test_${mode}_${job_num}
+  now=$(date +"%T")
+  echo "start time : $now"
+  echo "GPU dir is " $job_num "data_list_dir is " $data_list_dir "nj is" $nj "text_file is" $label_file "cer out is" $cer_out_dir "lm is 4gram"
+  echo "dir is " $dir
+  if [ ! -f ${data_list_dir}data_sublist${job_num}/${text_file}  ]; then
+  echo "text file does not exists"
+  exit 1;
+  fi
+
+  ./tools/decode.sh --nj 16 \
+    --beam 15.0 --lattice_beam 7.5 --max_active 7000 \
+    --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
+    --chunk_size $chunk_size \
+    --fst_path data/lang_test/TLG.fst \
+    ${data_list_dir}data_sublist${job_num}/wav.scp ${data_list_dir}data_sublist${job_num}/${text_file} $dir/final.zip \
+    data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_out_dir}_${job_num}
+  now=$(date +"%T")
+  echo "end time : $now"
+fi
+
+
 
 if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ]; then
   chunk_size=-1

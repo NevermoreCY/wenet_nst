@@ -10,11 +10,11 @@ import json
 # /yuch_ws/wenet/examples/aishell/s0/; python output_filtered_cer.py --dir_num=2 --cer_pred_threshold=10 --speak_rate_threshold=3 --utter_time_file=utter_time.json --cer_label_dir=test_data/wenet_1k_cer_label_nst0_redo/wer --cer_hypo_dir=test_data/wenet_1k_cer_hypo_nst0_redo/wer --output_dir=data/train/wenet1k_untar_redo_8_1_nst0/ --tar_dir=data/train/wenet1k_tar_redo_8_1_nst0/ --wav_dir=data/train/wenet_1k_untar/
 
 def get_args():
-    parser = argparse.ArgumentParser(description='out_put predictions')
-    parser.add_argument('--dir_num',required=True,help='directory number')
+    parser = argparse.ArgumentParser(description='generate filter pseudi label')
+    parser.add_argument('--dir_num',required=True,help='split directory number')
     parser.add_argument('--cer_hypo_name', required=True, help='prefix for cer_hypo_dir')
-    parser.add_argument('--utter_time_file', required=True, help='the cer threshold we use to filter')
-    parser.add_argument('--cer_hypo_threshold', required=True,type=float, help='the cer threshold we use to filter')
+    parser.add_argument('--utter_time_file', required=True, help='the json file that contains audio time infos ')
+    parser.add_argument('--cer_hypo_threshold', required=True,type=float, help='the cer-hypo threshold we use to filter')
     parser.add_argument('--speak_rate_threshold',type=float, help='the cer threshold we use to filter')
     parser.add_argument('--dir', required=True,   help='dir for the experiment ')
     # output untar and tar
@@ -140,6 +140,7 @@ def main():
 
     num_uttr = 1000
     L = len(data_filtered)
+    print("total sentences after filter ")
     cur_id = start_tar_id * 1000
     end_id = cur_id + num_uttr
     if cur_id < L and end_id > L:

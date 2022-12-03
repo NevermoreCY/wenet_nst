@@ -126,7 +126,7 @@ unsupervised_dataset_conf:
 
 grad_clip: 5
 accum_grad: 4
-max_epoch: 240
+max_epoch: 2
 log_interval: 100
 # for full supervised training, just set this pseudo_ratio to 0
 pseudo_ratio: 0.75
