@@ -357,9 +357,9 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
   test_dir=$dir/test_${mode}_${job_num}
   now=$(date +"%T")
   echo "start time : $now"
-  echo "GPU dir is " $job_num "dir_split is " $dir_split "nj is" $nj "text_file is" $hypo_name "cer out is" $cer_hypo_dir "lm is 4gram"
+  echo "GPU dir is " $job_num "dir_split is " data/train/${dir_split} "nj is" $nj "text_file is" $hypo_name "cer out is" $cer_hypo_dir "lm is 4gram"
   echo "dir is " $dir
-  if [ ! -f ${dir_split}data_sublist${job_num}/${text_file}  ]; then
+  if [ ! -f data/train/${dir_split}data_sublist${job_num}/${text_file}  ]; then
   echo "text file does not exists"
   exit 1;
   fi
@@ -369,7 +369,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
     --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
     --chunk_size $chunk_size \
     --fst_path data/lang_test/TLG.fst \
-    ${dir_split}data_sublist${job_num}/wav.scp ${dir_split}data_sublist${job_num}/${hypo_name} $dir/final.zip \
+    data/train/${dir_split}data_sublist${job_num}/wav.scp data/train/${dir_split}data_sublist${job_num}/${hypo_name} $dir/final.zip \
     data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_hypo_dir}_${job_num}
   now=$(date +"%T")
   echo "end time : $now"
@@ -385,9 +385,9 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
   test_dir=$dir/test_${mode}_${job_num}
   now=$(date +"%T")
   echo "start time : $now"
-  echo "GPU dir is " $job_num "dir_split is " $dir_split "nj is" $nj "text_file is" $label_file "cer out is" $cer_label_dir "lm is 4gram"
+  echo "GPU dir is " $job_num "dir_split is " data/train/${dir_split} "nj is" $nj "text_file is" $label_file "cer out is" $cer_label_dir "lm is 4gram"
   echo "dir is " $dir
-  if [ ! -f ${dir_split}data_sublist${job_num}/${text_file}  ]; then
+  if [ ! -f data/train/${dir_split}data_sublist${job_num}/${text_file}  ]; then
   echo "text file does not exists"
   exit 1;
   fi
@@ -397,7 +397,7 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
     --blank_skip_thresh 0.98 --ctc_weight 0.5 --rescoring_weight 1.0 \
     --chunk_size $chunk_size \
     --fst_path data/lang_test/TLG.fst \
-    ${dir_split}data_sublist${job_num}/wav.scp ${dir_split}data_sublist${job_num}/${label_file} $dir/final.zip \
+    data/train/${dir_split}data_sublist${job_num}/wav.scp data/train/${dir_split}data_sublist${job_num}/${label_file} $dir/final.zip \
     data/lang_test/words.txt $dir/Hypo_LM_diff10/${cer_label_dir}_${job_num}
   now=$(date +"%T")
   echo "end time : $now"
