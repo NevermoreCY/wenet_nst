@@ -38,7 +38,7 @@ def get_args():
 
 def main():
     args = get_args()
-    data_list_dir = args.data_list_dir
+    data_list_dir = args.dir_split
     num_lists = args.job_num
     hypo = args.hypo_name
     # wav_dir is the directory where your pair of ID.scp (the audio file ) and ID.txt (the optional label file ) file stored. We assumed that you have
