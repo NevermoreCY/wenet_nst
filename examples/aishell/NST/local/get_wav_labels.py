@@ -6,10 +6,15 @@ import argparse
 
 #merged_step 1:
 
-#bash run_nst.sh  --stage 1 --stop-stage 8 --dir exp/conformer_test_fully_supervised
+#bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_test_fully_supervised --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1k_tar_10_11_nss7.list --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst0.txt --label 1 --wav_dir data/train/wenet_1k_untar/ --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0 --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar/ --tar_dir data/train/wenet_1khr_tar/ --out_data_list data/train/wenet_1khr.list
+
+
+#bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_test_fully_supervised
 # --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1k_tar_10_11_nss7.list
 # --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst0.txt --label 1 --wav_dir data/train/wenet_1k_untar/
-# --cer_out_dir wenet_supervised_cer
+# --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0
+# --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar/ --tar_dir data/train/wenet_1khr_tar/ --out_data_list data/train/wenet_1khr.list
+
 
 # python split_data_list_nst.py --job_nums=50 --data_list_path=data/train/pseudo_data_iter_1_LM_diff_leq_10.list --output_dir=data/train/LM_diff_10/ --label_dir=data/train/wenet_1k_untar_pred_5_27_LM_diff_leq_10/labels/
 # python generate_wav_labels_without_label_dir.py --job_nums=0 --data_list_dir=data/train/data_wenet_1k_split_100/

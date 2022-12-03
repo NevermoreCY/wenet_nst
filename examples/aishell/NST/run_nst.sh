@@ -60,6 +60,7 @@ speak_rate_threshold=0
 utter_time_file="utter_time.json"
 tar_dir=""
 untar_dir=""
+out_data_list=""
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 
@@ -418,12 +419,9 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
     --wavdir $wav_dir \
     --utter_time_file $utter_time_file
 
-  python generate_filtered_pseudo_label.py  \
-    --dir_num $job_num \
-    --cer_hypo_dir $cer_hypo_dir \
-    --cer_hypo_threshold $cer_hypo_threshold\
-    --speak_rate_threshold $speak_rate_threshold \
-    --utter_time_file $utter_time_file \
+  python local/generate_data_list.py  \
+    --tar_dir $tar_dir \
+    --out_data_list $out_data_list
 
 fi
 
