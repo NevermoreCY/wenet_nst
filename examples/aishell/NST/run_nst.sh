@@ -37,7 +37,6 @@ job_num=0
 cer_out_dir=""
 cer_hypo_dir=""
 cer_label_dir=""
-text_file=""
 hypo_name=""
 dir=""
 pseudo_data_list=""
@@ -109,7 +108,6 @@ echo "pseudo data list is ${pseudo_data_list}"
 echo "supervised data list is ${supervised_data_list}"
 echo "job_num is ${job_num}"
 echo "cer_out_dir is  ${cer_out_dir}"
-echo "text_file is ${text_file}"
 echo "average_num is ${average_num}"
 echo "checkpoint is ${checkpoint} "
 echo "enable_nst is ${enable_nst} "
@@ -346,7 +344,7 @@ fi
 # training using the wenet aishell-1 pipline. (You should have data/lang/words.txt , data/lang/TLG.fst files ready.)
 # Here is an exmaple usage:
 # bash run_nst.sh --stage 5 --stop-stage 5 --job_num n --dir_split data/train/wenet1k_redo_split_60/
-# --cer_hypo_dir wenet1k_cer_hypo --text_file hypothesis_nst.txt --dir exp/conformer_no_filter_redo_nst6
+# --cer_hypo_dir wenet1k_cer_hypo --hypo_name hypothesis_nst.txt --dir exp/conformer_no_filter_redo_nst6
 # You need to specify the "job_num" n (n <= N), "dir_split" which is the dir path for split data
 # "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
@@ -357,9 +355,9 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
   test_dir=$dir/test_${mode}_${job_num}
   now=$(date +"%T")
   echo "start time : $now"
-  echo "GPU dir is " $job_num "dir_split is " data/train/${dir_split} "nj is" $nj "text_file is" $hypo_name "cer out is" $cer_hypo_dir "lm is 4gram"
+  echo "GPU dir is " $job_num "dir_split is " data/train/${dir_split} "nj is" $nj "hypo_file is" $hypo_name "cer out is" $cer_hypo_dir "lm is 4gram"
   echo "dir is " $dir
-  if [ ! -f data/train/${dir_split}data_sublist${job_num}/${text_file}  ]; then
+  if [ ! -f data/train/${dir_split}data_sublist${job_num}/${hypo_name}  ]; then
   echo "text file does not exists"
   exit 1;
   fi
@@ -385,9 +383,10 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
   test_dir=$dir/test_${mode}_${job_num}
   now=$(date +"%T")
   echo "start time : $now"
-  echo "GPU dir is " $job_num "dir_split is " data/train/${dir_split} "nj is" $nj "text_file is" $label_file "cer out is" $cer_label_dir "lm is 4gram"
+  echo "GPU dir is " $job_num "dir_split is " data/train/${dir_split} "nj is" $nj "label_file is" $label_file "cer out is" $cer_label_dir "lm is 4gram"
   echo "dir is " $dir
-  if [ ! -f data/train/${dir_split}data_sublist${job_num}/${text_file}  ]; then
+  echo "label_file " data/train/${dir_split}data_sublist${job_num}/${label_file}
+  if [ ! -f data/train/${dir_split}data_sublist${job_num}/${label_file}  ]; then
   echo "text file does not exists"
   exit 1;
   fi
@@ -424,24 +423,4 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
 fi
 
 
-
-if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ]; then
-  chunk_size=-1
-  mode="attention_rescoring"
-  test_dir=$dir/test_${mode}_${job_num}
-  now=$(date +"%T")
-  echo "start time : $now"
-  echo "GPU dir is " $job_num "wav_label_dir is " $wav_label_dir "nj is" 4 "text_file is" $text_file "cer out is" $cer_out_dir "lm is 4gram"
-  echo "dir is " $dir
-
-  ./tools/decode.sh --nj $nj \
-    --beam 15.0 --lattice_beam 7.5 --max_active 7000 \
-    --blank_skip_thresh 0.98 --ctc_weight 0 --rescoring_weight 1 \
-    --chunk_size $chunk_size \
-    --fst_path data/lang_test_4gram/TLG.fst \
-    data/test/wav.scp data/test/text $dir/final.zip \
-    data/lang_test_4gram/words.txt $dir/test_attention_rescoring_withLM_ctc0_rw1
-  now=$(date +"%T")
-  echo "end time : $now"
-fi
 
