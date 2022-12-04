@@ -12,13 +12,13 @@ import json
 def get_args():
     parser = argparse.ArgumentParser(description='generate filter pseudi label')
     parser.add_argument('--dir_num',required=True,help='split directory number')
-    parser.add_argument('--cer_hypo_name', required=True, help='prefix for cer_hypo_dir')
+    parser.add_argument('--cer_hypo_dir', required=True, help='prefix for cer_hypo_dir')
     parser.add_argument('--utter_time_file', required=True, help='the json file that contains audio time infos ')
     parser.add_argument('--cer_hypo_threshold', required=True,type=float, help='the cer-hypo threshold we use to filter')
     parser.add_argument('--speak_rate_threshold',type=float, help='the cer threshold we use to filter')
     parser.add_argument('--dir', required=True,   help='dir for the experiment ')
     # output untar and tar
-    parser.add_argument('--output_dir',required=True, help='the output path, eg: data/train/wenet_untar_6_5_cer_hypo_leq_10_nst1/')
+    parser.add_argument('--untar_dir',required=True, help='the output path, eg: data/train/wenet_untar_6_5_cer_hypo_leq_10_nst1/')
     parser.add_argument('--tar_dir', required=True,
                         help='the tar file path, eg: data/train/wenet_tar_6_5_cer_hypo_leq_10_nst1/')
     parser.add_argument('--wav_dir', required=True, help='dir to store wav files, eg "data/train/wenet_1k_untar/"')
@@ -36,7 +36,7 @@ def main():
 
     dir_num = args.dir_num
     dir = args.dir
-    output_dir = args.output_dir
+    output_dir = args.untar_dir
     cer_hypo_threshold = args.cer_hypo_threshold
     speak_rate_threshold = args.speak_rate_threshold
     utter_time_file = args.utter_time_file  # utter_time_file = 'utter_time.json'
@@ -45,7 +45,7 @@ def main():
     start_tar_id = args.start_tar_id
     os.makedirs(tar_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
-    cer_hypo_name = args.cer_hypo_name
+    cer_hypo_name = args.cer_hypo_dir
     print("start tar id is", start_tar_id)
     print("make dirs")
 
