@@ -29,36 +29,39 @@ export CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
 # https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/env.html
 # export NCCL_SOCKET_IFNAME=ens4f1
 export NCCL_DEBUG=INFO
-stage=0 # start from 0 if you need to start from data preparation
-stop_stage=5
+stage=1 # start from 0 if you need to start from data preparation
+stop_stage=8
 
 # here are extra parameters used in NST
-job_num=0
 cer_out_dir=""
-cer_hypo_dir=""
-cer_label_dir=""
-hypo_name=""
 dir=""
 pseudo_data_list=""
 supervised_data_list=""
 gcmvn=""
-enable_nst=1
 checkpoint=
+data_list=""
+
+hypo_name=""
+out_data_list=""
+#parameters with default values:
+label=0
 average_num=30
 nj=16
 num_split=1
-data_list=""
-dir_split=""
-label=0
-hypo_name=""
-wav_dir=""
-label_file="label.txt"
 cer_hypo_threshold=10
 speak_rate_threshold=0
+label_file="label.txt"
 utter_time_file="utter_time.json"
-tar_dir=""
-untar_dir=""
-out_data_list=""
+enable_nst=1
+job_num=0
+dir_split="wenet_split_60_test/"
+hypo_name="hypothesis_nst${job_num}.txt"
+wav_dir="data/train/wenet_1k_untar/"
+tar_dir="data/train/wenet_1khr_tar/"
+untar_dir="data/train/wenet_1khr_untar/"
+cer_hypo_dir="wenet_cer_hypo"
+cer_label_dir="wenet_cer_label"
+
 # The num of machines(nodes) for multi-machine training, 1 is for one machine.
 # NFS is required if num_nodes > 1.
 
