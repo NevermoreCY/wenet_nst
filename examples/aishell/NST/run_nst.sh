@@ -409,14 +409,14 @@ fi
 if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
   echo "********stage 8 start time : $now ********"
   python local/generate_filtered_pseudo_label.py  \
-    --dir_num $job_num \
     --cer_hypo_dir $cer_hypo_dir \
+    --untar_dir $untar_dir \
+    --wav_dir $wav_dir \
+    --dir_num $job_num \
     --cer_hypo_threshold $cer_hypo_threshold\
     --speak_rate_threshold $speak_rate_threshold \
     --dir $dir \
-    --untar_dir $untar_dir \
     --tar_dir $tar_dir \
-    --wavdir $wav_dir \
     --utter_time_file $utter_time_file
 
   python local/generate_data_list.py  \
