@@ -41,7 +41,7 @@ class Executor_nst:
         num_seen_utts = 0
 
         pseudo_ratio = float(args["pseudo_ratio"])
-        print("************** , pseudo_ratio is", pseudo_ratio, "********************")
+        print("************** NST enabled, pseudo_ratio is", pseudo_ratio, "********************")
         with model_context():
             # --------------------------modification start ------------------------------------------
             print(time.time(), "before loop")
