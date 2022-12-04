@@ -12,7 +12,7 @@ import argparse
 
 #merged_step 2:
 
-#bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_nst1 --supervised_data_list data_aishell.list --pseudo_data_list wenet_1khr_nst0.list --enable_nst 1 --hypo_name hypothesis_nst1.txt --untar_dir data/train/wenet_1khr_untar_nst1/ --tar_dir data/train/wenet_1khr_tar_nst1/ --out_data_list data/train/wenet_1khr_nst1.list 2>&1 | tee logs/log_12_4_m2_step1
+#bash run_nst.sh  --stage 2 --stop-stage 2 --dir exp/conformer_nst1 --supervised_data_list data_aishell.list --pseudo_data_list wenet_1khr_nst0.list --enable_nst 1 --hypo_name hypothesis_nst1.txt --untar_dir data/train/wenet_1khr_untar_nst1/ --tar_dir data/train/wenet_1khr_tar_nst1/ --out_data_list data/train/wenet_1khr_nst1.list 2>&1 | tee logs/log_12_4_m2_step2
 
 #bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_test_fully_supervised
 # --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1khr.list
