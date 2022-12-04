@@ -78,7 +78,7 @@ def main():
     cer_dict = {}
 
     print("dir_num = ", dir_num)
-    cer_hypo_path = dir + "/Hypo_LM_diff10/" + cer_hypo_name+ dir_num + "/wer"
+    cer_hypo_path = dir + "/Hypo_LM_diff10/" + cer_hypo_name+ "_" + dir_num + "/wer"
     with open(cer_hypo_path, 'r', encoding="utf-8") as reader:
         data = reader.readlines()
 
