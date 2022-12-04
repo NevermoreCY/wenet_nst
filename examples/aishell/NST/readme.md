@@ -3,13 +3,16 @@
 # Guideline
 
 ## Data preparation:
-You can run , we assumed that you follow the data pre-process steps from -1 to 3 in aishell1/s0/run.sh to prepare your dataset. 
+To run the guideline, you should download aishell1 and wenetspeech data using script from the "s0" example in wenet. 
+We extracted 1khr data from WenetSpeech and data should be prepared and stored in the following format:
 
-For each train,valid and test set, a data.list file should be prepared, each line of the file is the path to the shards. 
+A data.list file contains paths for all the extracted wenetspeech data.
 
-For unsupervised data, all the audio datas (id.wav) and labels (id.txt which is optional) should be prepared and stored in data/train/wav_dir.
+For unsupervised data, all the audio data (id.wav) and labels (id.txt which is optional) should be prepared and stored in wav_dir.
 
-utter_time_file should 
+A Json file containing the audio length should be prepared in utter_time.json If you want to apply the speaking rate filter.
+
+we include a tiny example under local/data to make it clearer for reproduction.
 ## Initial supervised teacher:
 ``` sh
 bash run_nst.sh --dir exp/conformer_test_fully_supervised --supervised_data_list data_aishell.list --data_list wenet_1khr.list --dir_split wenet_split_60_test/ --out_data_list data/train/wenet_1khr_nst0.list --enable_nst 0
@@ -41,91 +44,57 @@ Full arguments are listed below, you can check the run_nst.sh code for more info
 ``` sh
 bash run_nst.sh --stage 1 --stop-stage 8 --dir exp/conformer_nst1 --supervised_data_list data_aishell.list --pseudo_data_list wenet_1khr_nst0  --enable_nst 1 --num_split 1 --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst1.txt --label 0 --wav_dir data/train/wenet_1k_untar/ --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0 --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar_nst1/ --tar_dir data/train/wenet_1khr_tar_nst1/ --out_data_list data/train/wenet_1khr_nst1.list 
 ```
-# Performance Record
+# Performance Record (Conformer)
 
-## Conformer Result
+
+## Supervised baseline & standard NST (without filter strategy, first iteration)
+* Feature info: using fbank feature, dither, cmvn, online speed perturb
+* Training info: lr 0.002, batch size 32, 8 gpu, acc_grad 4, 240 epochs, dither 0.1
+* Decoding info: ctc_weight 0.3, average_num 30
+
+
+| Supervised                           | Unsupervised | Test CER |
+|--------------------------------------|--------------|----------|
+| AISHELL-1 Only                       | ----         | 4.85     |
+| AISHELL-1+WenetSpeech                | ----         | 3.54     |
+| AISHELL-1+AISHELL-2                  | ----         | 1.01     |
+| AISHELL-1                            | WenetSpeech  | 5.52     |
+| AISHELL-1                            | AISHELL-2    | 3.99     |
+
+
+
+## Supervised AISHELL-1 + unsupervised 1khr WenetSpeech
 
 * Feature info: using fbank feature, dither, cmvn, online speed perturb
-* Training info: lr 0.001, batch size 8, 8 gpu, acc_grad 1, 100 epochs, dither 0.1
-* Training weight info: transducer_weight 0.75, ctc_weight 0.1, attention_weight 0.15, average_num 10
-* Predictor type: lstm
+* Training info: lr 0.002, batch size 32, 8 gpu, acc_grad 4, 200 epochs, dither 0.1
+* Decoding info: ctc_weight 0.3, average_num 30, pseudo_ratio 0.75
 
-| decoding mode             | CER   |
-|---------------------------|-------|
-| rnnt greedy search        | 5.24  |
+| # nst iteration | AISHELL-1 test CER | Pseudo CER| Filtered CER | Filtered hours |
+|----------------|--------------------|-----------|--------------|----------------|
+| 0 | 4.85             | 47.10     |   25.18           |     323           |
+| 1 | 4.86             | 37.02     |   20.93           |     436           |
+| 2 | 4.75             | 31.81     |   19.74           |     540           |
+| 3 | 4.69             | 28.27     |   17.85           |     592           |
+| 4 | 4.48             | 26.64     |   14.76           |     588           |
+| 5 | 4.41             | 24.70     |   15.86           |     670           |
+| 6 | 4.34             | 23.64     |   15.40           |     669           |
+| 7 | 4.31             | 23.79     |   15.75           |     694           |
 
-* after 165 epochs and avg 30
-
-| decoding mode             | CER   |
-|---------------------------|-------|
-| rnnt greedy search        | 5.02  |
-| ctc prefix beam search    | 5.17  |
-| ctc prefix beam + rescore | 4.48  |
-
-## Conformer Result
-
+## Supervised AISHELL-2 + unsupervised 4khr WenetSpeech
 * Feature info: using fbank feature, dither, cmvn, online speed perturb
-* Training info: lr 0.001, batch size 20, 8 gpu, acc_grad 1, 140 epochs, dither 0.1
-* Training weight info: transducer_weight 0.4, ctc_weight 0.2, attention_weight 0.4, average_num 10
-* Predictor type: lstm
-* Model link: https://wenet-1256283475.cos.ap-shanghai.myqcloud.com/models/aishell/20220728_conformer_rnnt_exp.tar.gz
+* Training info: lr 0.002, batch size 32, 8 gpu, acc_grad 4, 120 epochs, dither 0.1
+* Decoding info: ctc_weight 0.3, average_num 30, pseudo_ratio 0.6
 
-| decoding mode                         | CER   |
-|---------------------------------------|-------|
-| rnnt greedy search                    | 4.88  |
-| rnnt beam search                      | 4.67  |
-| ctc prefix beam search                | 5.02  |
-| ctc prefix beam + rescore             | 4.51  |
-| ctc prefix beam + rnnt&attn rescore   | 4.45  |
-| rnnt prefix beam + rnnt&attn rescore  | 4.49  |
+| # nst iteration | AISHELL-2 test CER | Pseudo CER | Filtered CER | Filtered hours |
+|----------------|--------------------|------------|--------------|----------------|
+| 0 | 5.48               | 30.10      | 11.73        | 1637           |
+| 1 | 5.09               | 28.31      | 9.39         | 2016           |
+| 2 | 4.88               | 25.38      | 9.99         | 2186           |
+| 3 | 4.74               | 22.47      | 10.66        | 2528           |
+| 4 | 4.73               | 22.23      | 10.43        | 2734           |
 
 
-## U2++ Conformer Result
 
-* Feature info: using fbank feature, dither, cmvn, oneline speed perturb
-* Training info: lr 0.001, batch size 4, 32 gpu, acc_grad 1, 360 epochs
-* Training weight info: transducer_weight 0.75,  ctc_weight 0.1, reverse_weight 0.15  average_num 30
-* Predictor type: lstm
-
-| decoding mode/chunk size  | full  | 16    |
-|---------------------------|-------|-------|
-| rnnt greedy search        | 5.68  | 6.26  |
-
-## Pretrain
-* Pretrain model: https://wenet-1256283475.cos.ap-shanghai.myqcloud.com/models/aishell/20210601_u2%2B%2B_conformer_exp.tar.gz
-* Feature info: using fbank feature, dither, cmvn, oneline speed perturb
-* Training info: lr 0.001, batch size 8, 8 gpu, acc_grad 1, 140 epochs
-* Training weight info: transducer_weight 0.4,  ctc_weight 0.2 , attention_weight 0.4, reverse_weight 0.3  average_num 30
-* Predictor type: lstm
-
-| decoding mode/chunk size    | full  | 16     |
-|-----------------------------|-------|--------|
-| rnnt greedy search          | 5.21  | 5.73   |
-| rnnt prefix beam            | 5.14  | 5.63   |
-| rnnt prefix beam + rescore  | 4.73  | 5.095  |
-
-
-## Training loss ablation study
-
-note:
-
-- If rnnt is checked, greedy means rnnt  greedy search; so is beam
-
-- if rnnt is checked, rescoring means rnnt beam & attention rescoring
-
-- if only 'ctc & att' is checked, greedy means ctc gredy search; so is beam
-
-- if only  'ctc & att' (AED)  is checked, rescoring means ctc beam & attention rescoring
-
-- what if rnnt model do search of wenet's style, comming soon
-
-| rnnt | ctc | att | greedy | beam | rescoring | fusion |
-|------|-----|-----|--------|------|-----------|--------|
-| ✔    | ✔   | ✔   |   4.88 | 4.67 |      4.45 |   4.49 |
-| ✔    | ✔   |     |   5.56 | 5.46 |       /   |   5.40 |
-| ✔    |     | ✔   |   5.03 | 4.94 |      4.87 |    /   |
-| ✔    |     |     |   5.64 | 5.59 |       /   |    /   |
-|      | ✔   | ✔   |   4.94 | 4.94 |      4.61 |    /   |
 ## Citations
 
 ``` bibtex
