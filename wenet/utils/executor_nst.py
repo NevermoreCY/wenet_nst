@@ -16,7 +16,7 @@ class Executor_nst:
         self.step = 0
     # we modify the train so that we can have two input data_loader for
     def train(self, model, optimizer, scheduler, data_loader_aishell, data_loader_wenetspeech, device, writer,
-              args, scaler, dataset_num, fuse_batch):
+              args, scaler):
         ''' Train one epoch
         '''
         model.train()
