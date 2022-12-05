@@ -1,4 +1,9 @@
 # Introduction
+Our project is based on codes from the WENET framework, we mainly modified "run.sh" in training and inference.
+Due to the large amount of pseudo-label, we divide the unsupervised data into N parts. where N depends on the number of available cpu/gpu in your cluster.
+we also modify the "wenet/bin/train.py" and "wenet/utils/executor.py" to make it compatible with NST training.
+we provide a guideline of our noisy student training with cer-Hypo filter strategy using AISHELL-1 as supervised data and WenetSpeech as unsupervised data.
+
 
 # Guideline
 
