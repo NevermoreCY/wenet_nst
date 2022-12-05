@@ -1,6 +1,5 @@
 # Introduction
-Our project is based on codes from the WENET framework, we mainly modified the script for "run.sh" and added "executor_nst.py" and "train_nst.py" .  
-Due to the large amount of pseudo-label, we divide the unsupervised data into N parts. where N("num_split") depends on the number of available cpu/gpu in your cluster.
+Our project is based on codes from the WENET framework, we mainly modified the script for "run.sh" and added "executor_nst.py" and "train_nst.py". Due to the large amount of pseudo-label, we divide the unsupervised data into N parts. where N("num_split") depends on the number of available cpu/gpu in your cluster.
 we provide a guideline of our noisy student training with cer-Hypo filter strategy using AISHELL-1 as supervised data and WenetSpeech as unsupervised data.
 
 
