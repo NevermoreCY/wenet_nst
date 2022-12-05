@@ -15,11 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # This is an augmented version of aishell-1 "run.sh" to make the code compatible with noisy student training
 
 . ./path.sh || exit 1;
-
 # Use this to control how many gpu you use, It's 1-gpu training if you specify
 # just 1gpu, otherwise it's is multiple gpu training based on DDP in pytorch
 export CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7"
@@ -40,7 +38,6 @@ supervised_data_list=""
 gcmvn=""
 checkpoint=
 data_list=""
-
 hypo_name=""
 out_data_list=""
 #parameters with default values:
@@ -89,10 +86,8 @@ cmvn=true
 #dir=exp/conformer_wenet1k_nst5_LM_diff_leq_10
 #checkpoint=exp/conformer_wenet1k_nst0_sr3_v2/avg_30.pt
 
-#avg_30.pt
-
 # use average_checkpoint will get better result
-# ??
+
 average_checkpoint=true
 target_pt=80
 decode_checkpoint=$dir/$target_pt.pt
@@ -115,15 +110,39 @@ echo "average_num is ${average_num}"
 echo "checkpoint is ${checkpoint} "
 echo "enable_nst is ${enable_nst} "
 
-
+# Data preparation
 # we assumed that you have finished the data pre-process steps from -1 to 3 in aishell1/s0/run.sh .
-# You can modify the "--train_data_supervised" to match your supervised data list.
+# You can modify the "--supervised_data_list" to match your supervised data list.
 # Here i used wenetspeech as the unsupervised data, you can run the data pre-process steps from -1 to 3 in
-# wenetspeech/s0/run.sh ; you can modify "--train_data_supervised" to match your unsupervised data list.
-# you can follow this process to generate your own dataset.
-# I have also included my code for extracting data in local/...
+# wenetspeech/s0/run.sh ; you can modify "--pseudo_data_list" to match your unsupervised data list.
+# In guideline, We extracted 1khr data from WenetSpeech and data should be prepared and stored in the following format:
+# data.list files contains paths for all the extracted wenetspeech data and AISHELL-1 data.
+# For unsupervised data, all the audio data (id.wav) and labels (id.txt which is optional) should be stored in wav_dir.
+# A Json file containing audio lengths named as "utter_time.json" if you want to apply the speaking rate filter.
+# we include a tiny example data under local/example to make it clearer for reproduction.
+# you can follow this format to generate your own dataset as well.
+
+
+
 
 # stage 1 is for training
+
+# when training the initial fully supervised teacher, you need to set "--enable_nst 0".
+# Example usage for initial teacher training :
+# bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_nst_0
+# --supervised_data_list data_aishell.list --enable_nst 0
+
+# when training with pseudo-label in NST iterations, you need to set "--enable_nst 1".
+# Example usage for NST iterations :
+# bash run_nst.sh  --stage 1 --stop-stage 1 --dir exp/conformer_nst_1
+# --supervised_data_list data_aishell.list --pseudo_data_list wenet_1khr_nst0.list --enable_nst 1
+
+# "--dir" is the directory that stores the training parameters.
+# "--supervised_data_list" is the data.list file for your supervised data.
+# "--pseudo_data_list" is the data.list file for your pseudo-label.
+# "--enable_nst" set to 0 will only use supervised data, if set to 1, pseudo-label will also be used in training.
+# The ratio between supervised data and pseudo-label can be set in config file.
+
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   echo "********stage 1 start time : $now ********"
   mkdir -p $dir
@@ -187,8 +206,12 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
   wait
 fi
 
-# In stage 2, we get the averaged final checkpoint and calculate the test and dev accuracy
+# In stage 2, we get the averaged final checkpoint and calculate the test and dev accuracy.
 # please make sure your test and valid data.list are in the proper location.
+
+# here is an example usage:
+# run_nst.sh  --stage 2 --stop-stage 2 --dir exp/conformer_nst_0 --supervised_data_list data_aishell.list --enable_nst 0
+
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
   # Test model, please specify the model you want to test by --checkpoint
   # stage 5 we test with aishell dataset,
@@ -271,8 +294,18 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
 fi
 
 
-# split the (unsupervised) datalist into N sublists, where N depends on the number of available cpu in your cluster.
-# when making inference, we compute N sublist in parallel.
+
+# In stage 3, we Split the unsupervised data list to N parts, we will do parallel computing on those parts. Note we only
+# need to perform stage 3 once in the intial teacher training, all the NST iterations afterwards will ignore stage 3.
+
+# Example usage:
+# bash run_nst.sh  --stage 3 --stop-stage 3 --num_split 1 --data_list wenet_1khr.list  --dir_split wenet_split_60
+
+# "--num_split" is the number of sub-data we will split. The default split number is 1 which means you don't split data.
+# In our paper's experiment, We used num_split = 60 which saved us lots of inference time & data shards generation time.
+# "--data_list" is the data list file for unsupervised data.
+# "--dir_split" is the directory for storing split unsupervised data.
+
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ] && [ ${enable_nst} -eq 0 ]; then
   echo "********stage 3 start time : $now ********"
   python split_data_list.py \
@@ -283,13 +316,16 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ] && [ ${enable_nst} -eq 0 ]; the
 fi
 
 
-# stage 4 will perform inference without language model on the given sublist(job num)
-# here is example usages:
-# bash run_nst.sh --stage 4 --stop-stage 4 --job_num $i --dir_split data/train/wenet_4khr_split_60/
-# --hypo_name hypothesis_0.txt --dir exp/conformer_aishell2_wenet4k_nst4
-# You need to specify the "job_num" n (n <= N), "dir_split" which is the dir path for split data
-# "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
-# For each gpu, you can run with different job_num to perform data-wise parallel computing.
+# stage 4 will perform inference without language model on the given sublist(job num).
+
+# Example usage:
+# bash run_nst.sh --stage 4 --stop-stage 4 --job_num 0 --dir_split wenet_split_60/
+# --hypo_name hypothesis_nst0.txt --dir exp/conformer_nst_0
+
+# "--job_num" specifies which sub-data split in stage 3 will be used. "job_num" must be less than "num_split".
+# "--hypo_name" is the path for output hypothesis under the split directory.
+# For each gpu/cpu, you can run with different job_num to perform data-wise parallel computing.
+
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
   echo "********stage 4 start time : $now ********"
   # we assume you have run stage 2 so that avg_${average_num}.pt exists
@@ -326,13 +362,17 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
 fi
 
 
-# Generate wav.scp file and label.txt file(optional) for each sublist we generated in step 3.
-# the wav_dir should be prepared in data processing step as we mentioned.
-#You need to specify the "job_num" n (n <= N), "dir_split" which is the dir path for split data,
-# "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
-# wav_dir is the directory that stores raw wav file and possible labels.
-# if you have label for unsupervised dataset, set label = 1 other wise keep it 0
+# Stage 5 will generate wav.scp file and label.txt file(optional) for each sublist we generated in step 3. Note we only
+# need to perform stage 5 once in the initial teacher training, all the NST iterations afterwards will ignore stage 5.
+
+# Example usage:
+# bash run_nst.sh --stage 5 --stop-stage 5 --job_num 0 --dir_split wenet_split_60_test/
+# --hypo_name hypothesis_0.txt --label 1 --wav_dir data/train/wenet_1k_untar/
+
+# "--label " sets to 1 means you have labels for unsupervised data, other wise set it to 0.
+# "--wav_dir" is the directory that stores raw audio file(id.wav) and possible labels (id.txt).
 # For each gpu or cpu, you can run with different job_num to perform data-wise parallel computing.
+
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ] && [ ${enable_nst} -eq 0 ]; then
   echo "********stage 5 start time : $now ********"
   python get_wav_labels.py \
@@ -343,14 +383,17 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ] && [ ${enable_nst} -eq 0 ]; the
     --label $label
 fi
 
-# Calculate cer-hypo between hypothesis with and without language model. We assumed that you have finished language model
-# training using the wenet aishell-1 pipline. (You should have data/lang/words.txt , data/lang/TLG.fst files ready.)
+# stage 6 will calculate cer-hypo between hypothesis with and without language model.
+# We assumed that you have trained a language model using the wenet aishell-1 pipline.
+# (You should have data/lang/words.txt , data/lang/TLG.fst files ready.)
+
 # Here is an exmaple usage:
-# bash run_nst.sh --stage 5 --stop-stage 5 --job_num n --dir_split data/train/wenet1k_redo_split_60/
-# --cer_hypo_dir wenet1k_cer_hypo --hypo_name hypothesis_nst.txt --dir exp/conformer_no_filter_redo_nst6
-# You need to specify the "job_num" n (n <= N), "dir_split" which is the dir path for split data
-# "hypo_name" is the path for output hypothesis and "dir" is the path where we train and store the model.
+# bash run_nst.sh --stage 6 --stop-stage 6 --job_num 0 --dir_split wenet_split_60_test/
+# --cer_hypo_dir wenet1k_cer_hypo --hypo_name hypothesis_0.txt --dir exp/conformer_nst_0
+
+# "--cer_hypo_dir" is the directory under "$dir/Hypo_LM_diff10/" that stores the cer_hypo for each sub-data.
 # For each gpu, you can run with different job_num to perform data-wise parallel computing.
+
 if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
   echo "********stage 6 start time : $now ********"
   chunk_size=-1
@@ -377,8 +420,13 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
 fi
 
 # (optional, only run this stage if you have true label for unsupervised data.)
-# Calculate cer-label between true label and hypothesis with language model.
-# You can use the output cer to evaluate NST's performance.
+# stage 7 will calculate cer-label between true label and hypothesis with language model, it only runs when "--label"
+# is set to 1. You can use the output cer to evaluate NST's performance.
+
+# Here is an exmaple usage:
+# bash run_nst.sh --stage 7 --stop-stage 7 --job_num 0 --data_list_dir wenet_split_60_test/
+# --cer_label_dir wenet1k_cer_label --labek_file label.txt --dir exp/conformer_nst_0 --label 1
+
 if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
   echo "********stage 7 start time : $now ********"
   chunk_size=-1
