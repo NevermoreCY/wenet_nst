@@ -59,7 +59,6 @@ bash run_nst.sh --stage 1 --stop-stage 8 --dir exp/conformer_nst1 --supervised_d
 | AISHELL-1+WenetSpeech                | ----         | 3.54     |
 | AISHELL-1+AISHELL-2                  | ----         | 1.01     |
 | AISHELL-1                            | WenetSpeech  | 5.52     |
-| AISHELL-1                            | AISHELL-2    | 3.99     |
 
 
 
