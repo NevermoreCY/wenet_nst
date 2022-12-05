@@ -16,7 +16,7 @@ For unsupervised data, all the audio data (id.wav) and labels (id.txt which is o
 
 A Json file containing the audio length should be prepared in utter_time.json If you want to apply the speaking rate filter.
 
-we include a tiny example under local/data to make it clearer for reproduction.
+we include a tiny example data under local/example to make it clearer for reproduction.
 ## Initial supervised teacher:
 First we need to train an initial teacher model only with supervised data in AISHELL-1. Here is an example usage:
 ``` sh
