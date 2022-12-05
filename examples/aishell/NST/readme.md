@@ -1,17 +1,16 @@
 # Introduction
-Our project is based on codes from the WENET framework, we mainly modified "run.sh" in training and inference.
-Due to the large amount of pseudo-label, we divide the unsupervised data into N parts. where N depends on the number of available cpu/gpu in your cluster.
-we also modify the "wenet/bin/train.py" and "wenet/utils/executor.py" to make it compatible with NST training.
+Our project is based on codes from the WENET framework, we mainly modified the script for "run.sh" and added "executor_nst.py" and "train_nst.py" .  
+Due to the large amount of pseudo-label, we divide the unsupervised data into N parts. where N("num_split") depends on the number of available cpu/gpu in your cluster.
 we provide a guideline of our noisy student training with cer-Hypo filter strategy using AISHELL-1 as supervised data and WenetSpeech as unsupervised data.
 
 
 # Guideline
 
 ## Data preparation:
-To run the guideline, you should download aishell1 and wenetspeech data using script from the "s0" example in wenet. 
+To run the guideline, you should download AISHELL1 and WenetSpeech data using script from the "s0" example in wenet. 
 We extracted 1khr data from WenetSpeech and data should be prepared and stored in the following format:
 
-A data.list file contains paths for all the extracted wenetspeech data.
+data.list files contains paths for all the extracted wenetspeech data and AISHELL-1 data.
 
 For unsupervised data, all the audio data (id.wav) and labels (id.txt which is optional) should be prepared and stored in wav_dir.
 
@@ -25,7 +24,7 @@ bash run_nst.sh --dir exp/conformer_test_fully_supervised --supervised_data_list
 
 The argument "dir" stores the training parameters, "supervised_data_list" contains paths for supervised data shards, "data_list" contains paths for unsupervised data shards which is used for inference. "dir_split" is the directory stores split unsupervised data for parallel computing. This guideline uses the default num_split equal to 1 while we strongly recommend use larger number to decrease the inference and shards generation time.  "out_data_list" is the pseudo label data list file path. "enable_nst" is whether we train with pseudo label, for initial teacher we set it to 0.
 
-Full arguments are listed below, you can check the run_nst.sh code for more information about each stage and their arguments:
+Full arguments are listed below, you can check the run_nst.sh code for more information about each stage and their arguments. We used num_split = 60 and generate shards with different cpu for the experiments in paper which saved us lots of inference time & data shards generation time. 
 
 ``` sh
 bash run_nst.sh --stage 1 --stop-stage 8 --dir exp/conformer_test_fully_supervised --supervised_data_list data_aishell.list --enable_nst 0 --num_split 1 --data_list wenet_1khr.list --dir_split wenet_split_60_test/ --job_num 0 --hypo_name hypothesis_nst0.txt --label 1 --wav_dir data/train/wenet_1k_untar/ --cer_hypo_dir wenet_cer_hypo --cer_label_dir wenet_cer_label --label_file label.txt --cer_hypo_threshold 10 --speak_rate_threshold 0 --utter_time_file utter_time.json --untar_dir data/train/wenet_1khr_untar/ --tar_dir data/train/wenet_1khr_tar/ --out_data_list data/train/wenet_1khr.list 
@@ -58,12 +57,12 @@ bash run_nst.sh --stage 1 --stop-stage 8 --dir exp/conformer_nst1 --supervised_d
 * Decoding info: ctc_weight 0.3, average_num 30
 
 
-| Supervised                           | Unsupervised | Test CER |
-|--------------------------------------|--------------|----------|
-| AISHELL-1 Only                       | ----         | 4.85     |
-| AISHELL-1+WenetSpeech                | ----         | 3.54     |
-| AISHELL-1+AISHELL-2                  | ----         | 1.01     |
-| AISHELL-1                            | WenetSpeech  | 5.52     |
+| Supervised               | Unsupervised | Test CER |
+|--------------------------|--------------|----------|
+| AISHELL-1 Only           | ----         | 4.85     |
+| AISHELL-1+WenetSpeech    | ----         | 3.54     |
+| AISHELL-1+AISHELL-2      | ----         | 1.01     |
+| AISHELL-1 (standard NST) | WenetSpeech  | 5.52     |
 
 
 
