@@ -425,7 +425,10 @@ fi
 
 # Here is an exmaple usage:
 # bash run_nst.sh --stage 7 --stop-stage 7 --job_num 0 --data_list_dir wenet_split_60_test/
-# --cer_label_dir wenet1k_cer_label --labek_file label.txt --dir exp/conformer_nst_0 --label 1
+# --cer_label_dir wenet1k_cer_label --label_file label.txt --dir exp/conformer_nst_0 --label 1
+
+# "--cer_label_dir" is the directory under "$dir/Hypo_LM_diff10/" that stores the cer_label for each sub-data.
+# "--label_file" is the path for label.txt file under the split directory.
 
 if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
   echo "********stage 7 start time : $now ********"
@@ -453,6 +456,25 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ] && [ ${label} -eq 1 ]; then
   echo "end time : $now"
 fi
 
+# stage 8 will apply CER-hypo filter strategy to the generated pseudo-label, and it will generate new shards for the
+# filter pseudo label and make it available for next NST iteration.
+
+# Here is an exmaple usage:
+# python generate_filtered_pseudo_label.py --dir_num=0 --cer_hypo_dir=wenet_supervised_cer_hypo
+# --cer_hypo_threshold=10 --speak_rate_threshold=0 --utter_time_file=utter_time.json
+# --dir=exp/conformer_test_fully_supervised --untar_dir=data/train/wenet_step8/
+# --tar_dir=data/train/wenet1k_tar_step8/ --wav_dir=data/train/wenet_1k_untar/
+# --out_data_list data/train/wenet_1khr.list
+
+# "--cer_hypo_threshold" is the threshold for cer-hypo filter, default is set to 10 which means data with cer-hypo > 10
+# will be pruned.
+# "--speak_rate_threshold" is the threshold for speaking rate filter,
+# data with speaking rate < threshold will be pruned.
+# "--utter_time_file" is the json file that contains audio length information, the format can be found in local/example
+# "--untar_dir" is the directory that stores the raw pseudo-label.
+# "--tar_dir" is the directory that stores the shards of pseudo-label, this will be used for training in next iteration.
+# "--out_data_list" is the data.list file contains the path to the shards in $tar_dir. This data.list file is the final
+# output of current NST iteration and it will become the psuedo-data list in stage 1 for next iteration.
 
 if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
   echo "********stage 8 start time : $now ********"
